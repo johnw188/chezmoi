@@ -17,28 +17,22 @@ func TestEntryStateApplyAndEqual(t *testing.T) {
 		{
 			name: "dir",
 			entryState: &DirState{
-				entryState: entryState{
-					path: "/home/user/foo",
-					mode: os.ModeDir | 0755,
-				},
+				path: "/home/user/foo",
+				mode: os.ModeDir | 0755,
 			},
 		},
 		{
 			name: "file",
 			entryState: &FileState{
-				entryState: entryState{
-					path: "/home/user/foo",
-					mode: 0644,
-				},
+				path: "/home/user/foo",
+				mode: 0644,
 			},
 		},
 		{
 			name: "symlink",
 			entryState: &SymlinkState{
-				entryState: entryState{
-					path: "/home/user/foo",
-					mode: 0644,
-				},
+				path:     "/home/user/foo",
+				mode:     0644,
 				linkname: "bar",
 			},
 		},

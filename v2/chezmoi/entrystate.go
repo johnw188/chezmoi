@@ -17,12 +17,6 @@ import (
 // A StatFunc is a function like os.Stat or os.Lstat.
 type StatFunc func(string) (os.FileInfo, error)
 
-// An entryState contains fields common across all EntryStates.
-type entryState struct {
-	path string
-	mode os.FileMode
-}
-
 // An EntryState represents the state of an entry.
 type EntryState interface {
 	Apply(Mutator, os.FileMode, EntryState) error
@@ -35,7 +29,8 @@ type EntryState interface {
 
 // A DirState represents the state of a directory.
 type DirState struct {
-	entryState
+	path        string
+	mode        os.FileMode
 	entriesFunc func() ([]os.FileInfo, error)
 	entries     []os.FileInfo
 	entriesErr  error
@@ -43,7 +38,8 @@ type DirState struct {
 
 // A FileState represents the state of a file.
 type FileState struct {
-	entryState
+	path           string
+	mode           os.FileMode
 	contentsFunc   func() ([]byte, error)
 	contents       []byte
 	contentsSHA256 []byte
@@ -52,7 +48,8 @@ type FileState struct {
 
 // A SymlinkState represents the state of a symlink.
 type SymlinkState struct {
-	entryState
+	path         string
+	mode         os.FileMode
 	linknameFunc func() (string, error)
 	linkname     string
 	linknameErr  error
@@ -84,23 +81,11 @@ func NewEntryStateWithInfo(fs vfs.FS, path string, info os.FileInfo) (EntryState
 	}
 }
 
-// Path return e's path.
-func (e *entryState) Path() string {
-	return e.path
-}
-
-// Mode returns e's mode.
-func (e *entryState) Mode() os.FileMode {
-	return e.mode
-}
-
 // NewDirState returns a new DirState populated with path and info on fs.
 func NewDirState(fs vfs.FS, path string, info os.FileInfo) *DirState {
 	return &DirState{
-		entryState: entryState{
-			path: path,
-			mode: info.Mode(),
-		},
+		path: path,
+		mode: info.Mode(),
 		entriesFunc: func() ([]os.FileInfo, error) {
 			return fs.ReadDir(path)
 		},
@@ -148,6 +133,16 @@ func (d *DirState) Equal(other EntryState) (bool, error) {
 	return d.mode == otherD.mode, nil
 }
 
+// Mode returns d's mode.
+func (d *DirState) Mode() os.FileMode {
+	return d.mode
+}
+
+// Path returns d's path.
+func (d *DirState) Path() string {
+	return d.path
+}
+
 // Write writes d to fs.
 func (d *DirState) Write(mutator Mutator, umask os.FileMode) error {
 	return mutator.Mkdir(d.path, d.mode&os.ModePerm&^umask)
@@ -156,10 +151,8 @@ func (d *DirState) Write(mutator Mutator, umask os.FileMode) error {
 // NewFileState returns a new FileState populated with path and info on fs.
 func NewFileState(fs vfs.FS, path string, info os.FileInfo) *FileState {
 	return &FileState{
-		entryState: entryState{
-			path: path,
-			mode: info.Mode(),
-		},
+		path: path,
+		mode: info.Mode(),
 		contentsFunc: func() ([]byte, error) {
 			return fs.ReadFile(path)
 		},
@@ -253,6 +246,16 @@ func (f *FileState) Equal(other EntryState) (bool, error) {
 	return bytes.Equal(contentsSHA256, otherContentsSHA256), nil
 }
 
+// Mode returns f's mode.
+func (f *FileState) Mode() os.FileMode {
+	return f.mode
+}
+
+// Path returns f's path.
+func (f *FileState) Path() string {
+	return f.path
+}
+
 // Write writes f to fs.
 func (f *FileState) Write(mutator Mutator, umask os.FileMode) error {
 	contents, err := f.Contents()
@@ -266,10 +269,8 @@ func (f *FileState) Write(mutator Mutator, umask os.FileMode) error {
 // fs.
 func NewSymlinkState(fs vfs.FS, path string, info os.FileInfo) *SymlinkState {
 	return &SymlinkState{
-		entryState: entryState{
-			path: path,
-			mode: info.Mode(),
-		},
+		path: path,
+		mode: info.Mode(),
 		linknameFunc: func() (string, error) {
 			return fs.Readlink(path)
 		},
@@ -333,6 +334,16 @@ func (s *SymlinkState) Linkname() (string, error) {
 		s.linkname, s.linknameErr = s.linknameFunc()
 	}
 	return s.linkname, s.linknameErr
+}
+
+// Mode returns s's mode.
+func (s *SymlinkState) Mode() os.FileMode {
+	return s.mode
+}
+
+// Path returns d's path.
+func (s *SymlinkState) Path() string {
+	return s.path
 }
 
 // Write writes s to fs.
