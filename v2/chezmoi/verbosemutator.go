@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"path"
 	"strings"
 
 	"github.com/pkg/diff"
@@ -137,8 +137,8 @@ func (m *VerboseMutator) WriteFile(name string, data []byte, perm os.FileMode, c
 		e := diff.Myers(context.Background(), ab).WithContextSize(3)
 		opts := []diff.WriteOpt{
 			diff.Names(
-				filepath.Join("a", name),
-				filepath.Join("b", name),
+				path.Join("a", name),
+				path.Join("b", name),
 			),
 		}
 		if m.colored {

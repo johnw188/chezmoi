@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"path"
 )
 
 // GPG interfaces with gpg.
@@ -22,7 +22,7 @@ func (g *GPG) Decrypt(filename string, ciphertext []byte) ([]byte, error) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	outputFilename := filepath.Join(tempDir, filepath.Base(filename))
+	outputFilename := path.Join(tempDir, path.Base(filename))
 	inputFilename := outputFilename + ".gpg"
 	if err := ioutil.WriteFile(inputFilename, ciphertext, 0600); err != nil {
 		return nil, err
@@ -53,7 +53,7 @@ func (g *GPG) Encrypt(filename string, plaintext []byte) ([]byte, error) {
 	}
 	defer os.RemoveAll(tempDir)
 
-	inputFilename := filepath.Join(tempDir, filepath.Base(filename))
+	inputFilename := path.Join(tempDir, path.Base(filename))
 	if err := ioutil.WriteFile(inputFilename, plaintext, 0600); err != nil {
 		return nil, err
 	}

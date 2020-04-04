@@ -14,6 +14,18 @@ const (
 	TemplateSuffix   = ".tmpl"
 )
 
+// Special file names.
+const (
+	ignoreName       = ".chezmoiignore"
+	removeName       = ".chezmoiremove"
+	templatesDirName = ".chezmoitemplates"
+	versionName      = ".chezmoiversion"
+
+	ignorePrefix = "."
+)
+
+const pathSeparator = "/"
+
 // A PersistentState is an interface to a persistent state.
 type PersistentState interface {
 	Close() error

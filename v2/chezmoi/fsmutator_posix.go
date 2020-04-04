@@ -5,7 +5,7 @@ package chezmoi
 import (
 	"errors"
 	"os"
-	"path/filepath"
+	"path"
 	"syscall"
 
 	"github.com/google/renameio"
@@ -16,7 +16,7 @@ import (
 func (m *FSMutator) WriteFile(name string, data []byte, perm os.FileMode, currData []byte) error {
 	// Special case: if writing to the real filesystem, use github.com/google/renameio
 	if m.FS == vfs.OSFS {
-		dir := filepath.Dir(name)
+		dir := path.Dir(name)
 		dev, ok := m.devCache[dir]
 		if !ok {
 			info, err := m.Stat(dir)

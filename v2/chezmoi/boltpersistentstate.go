@@ -2,7 +2,7 @@ package chezmoi
 
 import (
 	"os"
-	"path/filepath"
+	"path"
 
 	vfs "github.com/twpayne/go-vfs"
 	bolt "go.etcd.io/bbolt"
@@ -105,7 +105,7 @@ func (b *BoltPersistentState) Set(bucket, key, value []byte) error {
 }
 
 func (b *BoltPersistentState) openDB() error {
-	if err := vfs.MkdirAll(b.fs, filepath.Dir(b.path), 0777&^b.umask); err != nil {
+	if err := vfs.MkdirAll(b.fs, path.Dir(b.path), 0777&^b.umask); err != nil {
 		return err
 	}
 	var options bolt.Options
