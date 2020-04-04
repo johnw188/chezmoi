@@ -9,7 +9,7 @@ import (
 	"github.com/twpayne/go-vfs/vfst"
 )
 
-func TestEntryStateReplaceOrWriteAndEqual(t *testing.T) {
+func TestEntryStateApplyAndEqual(t *testing.T) {
 	for _, tc1 := range []struct {
 		name       string
 		entryState EntryState
@@ -103,9 +103,9 @@ func TestEntryStateReplaceOrWriteAndEqual(t *testing.T) {
 					initialEntryState, err := NewEntryState(fs, fs.Lstat, "/home/user/foo")
 					require.NoError(t, err)
 
-					// Write or replace the desired state.
+					// Apply the desired state.
 					mutator := NewFSMutator(fs)
-					require.NoError(t, tc1.entryState.Replace(mutator, vfst.DefaultUmask, initialEntryState))
+					require.NoError(t, tc1.entryState.Apply(mutator, vfst.DefaultUmask, initialEntryState))
 
 					// Verify that the filesystem matches the desired state.
 					vfst.RunTests(t, fs, "", entryStateTest(t, tc1.entryState))

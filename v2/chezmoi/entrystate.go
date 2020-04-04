@@ -25,11 +25,11 @@ type entryState struct {
 
 // An EntryState represents the state of an entry.
 type EntryState interface {
+	Apply(Mutator, os.FileMode, EntryState) error
 	Archive(*tar.Writer, *tar.Header, os.FileMode) error
 	Mode() os.FileMode
 	Equal(EntryState) (bool, error)
 	Path() string
-	Replace(Mutator, os.FileMode, EntryState) error
 	Write(Mutator, os.FileMode) error
 }
 
@@ -107,6 +107,20 @@ func NewDirState(fs vfs.FS, path string, info os.FileInfo) *DirState {
 	}
 }
 
+// Apply updates target to be d using mutator.
+func (d *DirState) Apply(mutator Mutator, umask os.FileMode, target EntryState) error {
+	if targetD, ok := target.(*DirState); ok {
+		if targetD.mode&os.ModePerm&^umask == d.mode&os.ModePerm&^umask {
+			return nil
+		}
+		return mutator.Chmod(targetD.path, d.mode&os.ModePerm&^umask)
+	}
+	if err := mutator.RemoveAll(d.path); err != nil {
+		return err
+	}
+	return d.Write(mutator, umask)
+}
+
 // Archive writes d to w.
 func (d *DirState) Archive(w *tar.Writer, headerTemplate *tar.Header, umask os.FileMode) error {
 	header := *headerTemplate
@@ -134,20 +148,6 @@ func (d *DirState) Equal(other EntryState) (bool, error) {
 	return d.mode == otherD.mode, nil
 }
 
-// Replace replaces target on fs with d.
-func (d *DirState) Replace(mutator Mutator, umask os.FileMode, target EntryState) error {
-	if targetD, ok := target.(*DirState); ok {
-		if targetD.mode&os.ModePerm&^umask == d.mode&os.ModePerm&^umask {
-			return nil
-		}
-		return mutator.Chmod(targetD.path, d.mode&os.ModePerm&^umask)
-	}
-	if err := mutator.RemoveAll(d.path); err != nil {
-		return err
-	}
-	return d.Write(mutator, umask)
-}
-
 // Write writes d to fs.
 func (d *DirState) Write(mutator Mutator, umask os.FileMode) error {
 	return mutator.Mkdir(d.path, d.mode&os.ModePerm&^umask)
@@ -164,6 +164,30 @@ func NewFileState(fs vfs.FS, path string, info os.FileInfo) *FileState {
 			return fs.ReadFile(path)
 		},
 	}
+}
+
+// Apply updates target to be f using mutator.
+func (f *FileState) Apply(mutator Mutator, umask os.FileMode, target EntryState) error {
+	if targetF, ok := target.(*FileState); ok {
+		contentsSHA256, err := f.ContentsSHA256()
+		if err != nil {
+			return err
+		}
+		targetContentsSHA256, err := targetF.ContentsSHA256()
+		if err != nil {
+			return err
+		}
+		if bytes.Equal(contentsSHA256, targetContentsSHA256) {
+			if f.mode&^umask == targetF.mode&^umask {
+				return nil
+			}
+			return mutator.Chmod(f.path, f.mode&os.ModePerm&^umask)
+		}
+	}
+	if err := mutator.RemoveAll(f.path); err != nil {
+		return err
+	}
+	return f.Write(mutator, umask) // FIXME
 }
 
 // Archive writes f to w.
@@ -229,30 +253,6 @@ func (f *FileState) Equal(other EntryState) (bool, error) {
 	return bytes.Equal(contentsSHA256, otherContentsSHA256), nil
 }
 
-// Replace replaces target on fs with f.
-func (f *FileState) Replace(mutator Mutator, umask os.FileMode, target EntryState) error {
-	if targetF, ok := target.(*FileState); ok {
-		contentsSHA256, err := f.ContentsSHA256()
-		if err != nil {
-			return err
-		}
-		targetContentsSHA256, err := targetF.ContentsSHA256()
-		if err != nil {
-			return err
-		}
-		if bytes.Equal(contentsSHA256, targetContentsSHA256) {
-			if f.mode&^umask == targetF.mode&^umask {
-				return nil
-			}
-			return mutator.Chmod(f.path, f.mode&os.ModePerm&^umask)
-		}
-	}
-	if err := mutator.RemoveAll(f.path); err != nil {
-		return err
-	}
-	return f.Write(mutator, umask) // FIXME
-}
-
 // Write writes f to fs.
 func (f *FileState) Write(mutator Mutator, umask os.FileMode) error {
 	contents, err := f.Contents()
@@ -274,6 +274,27 @@ func NewSymlinkState(fs vfs.FS, path string, info os.FileInfo) *SymlinkState {
 			return fs.Readlink(path)
 		},
 	}
+}
+
+// Apply updates target to be s using mutator.
+func (s *SymlinkState) Apply(mutator Mutator, umask os.FileMode, target EntryState) error {
+	if targetS, ok := target.(*SymlinkState); ok {
+		linkname, err := s.Linkname()
+		if err != nil {
+			return err
+		}
+		targetLinkname, err := targetS.Linkname()
+		if err != nil {
+			return err
+		}
+		if linkname == targetLinkname {
+			return nil
+		}
+	}
+	if err := mutator.RemoveAll(s.path); err != nil {
+		return err
+	}
+	return s.Write(mutator, umask)
 }
 
 // Archive writes s to w.
@@ -312,27 +333,6 @@ func (s *SymlinkState) Linkname() (string, error) {
 		s.linkname, s.linknameErr = s.linknameFunc()
 	}
 	return s.linkname, s.linknameErr
-}
-
-// Replace replaces target on fs with s.
-func (s *SymlinkState) Replace(mutator Mutator, umask os.FileMode, target EntryState) error {
-	if targetS, ok := target.(*SymlinkState); ok {
-		linkname, err := s.Linkname()
-		if err != nil {
-			return err
-		}
-		targetLinkname, err := targetS.Linkname()
-		if err != nil {
-			return err
-		}
-		if linkname == targetLinkname {
-			return nil
-		}
-	}
-	if err := mutator.RemoveAll(s.path); err != nil {
-		return err
-	}
-	return s.Write(mutator, umask)
 }
 
 // Write writes s to fs.
