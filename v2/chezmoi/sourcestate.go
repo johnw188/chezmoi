@@ -1,12 +1,17 @@
 package chezmoi
 
 import (
+	"archive/tar"
+	"bytes"
 	"fmt"
 	"os"
+	"os/user"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"text/template"
+	"time"
 
 	"github.com/coreos/go-semver/semver"
 	vfs "github.com/twpayne/go-vfs"
@@ -87,6 +92,25 @@ func NewSourceState(options ...SourceStateOption) *SourceState {
 	return s
 }
 
+// ExecuteTemplateData returns the result of executing template data.
+func (s *SourceState) ExecuteTemplateData(name string, data []byte) ([]byte, error) {
+	tmpl, err := template.New(name).Option(s.templateOptions...).Funcs(s.templateFuncs).Parse(string(data))
+	if err != nil {
+		return nil, err
+	}
+	for name, t := range s.templates {
+		tmpl, err = tmpl.AddParseTree(name, t.Tree)
+		if err != nil {
+			return nil, err
+		}
+	}
+	output := &bytes.Buffer{}
+	if err = tmpl.ExecuteTemplate(output, name, s.templateData); err != nil {
+		return nil, err
+	}
+	return output.Bytes(), nil
+}
+
 // Read reads a source state from sourcePath in fs.
 func (s *SourceState) Read(fs vfs.FS, sourcePath string) error {
 	return vfs.Walk(fs, sourcePath, func(thisPath string, info os.FileInfo, err error) error {
@@ -157,9 +181,46 @@ func (s *SourceState) Read(fs vfs.FS, sourcePath string) error {
 	})
 }
 
-func (d *dirSourceState) SourcePath() string { return d.sourcePath }
+// SourcePath returns d's source path.
+func (d *dirSourceState) SourcePath() string {
+	return d.sourcePath
+}
 
-func (f *fileSourceState) SourcePath() string { return f.sourcePath }
+// SourcePath returns f's source path.
+func (f *fileSourceState) SourcePath() string {
+	return f.sourcePath
+}
+
+func getTarHeaderTemplate() *tar.Header {
+	var (
+		now   = time.Now()
+		uid   int
+		gid   int
+		Uname string
+		Gname string
+	)
+
+	// Attempt to lookup the current user. Ignore errors because the defaults
+	// are reasonable.
+	if currentUser, err := user.Current(); err == nil {
+		uid, _ = strconv.Atoi(currentUser.Uid)
+		gid, _ = strconv.Atoi(currentUser.Gid)
+		Uname = currentUser.Username
+		if group, err := user.LookupGroupId(currentUser.Gid); err != nil {
+			Gname = group.Name
+		}
+	}
+
+	return &tar.Header{
+		Uid:        uid,
+		Gid:        gid,
+		Uname:      Uname,
+		Gname:      Gname,
+		ModTime:    now,
+		AccessTime: now,
+		ChangeTime: now,
+	}
+}
 
 func getTargetDirName(dir string) string {
 	sourceNames := strings.Split(dir, pathSeparator)
