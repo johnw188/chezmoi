@@ -8,12 +8,19 @@ type PatternSet struct {
 	excludes map[string]struct{}
 }
 
+// A PatternSetOption sets an option on a pattern set.
+type PatternSetOption func(*PatternSet)
+
 // NewPatternSet returns a new PatternSet.
-func NewPatternSet() *PatternSet {
-	return &PatternSet{
+func NewPatternSet(options ...PatternSetOption) *PatternSet {
+	ps := &PatternSet{
 		includes: make(map[string]struct{}),
 		excludes: make(map[string]struct{}),
 	}
+	for _, option := range options {
+		option(ps)
+	}
+	return ps
 }
 
 // Add adds a pattern to ps.

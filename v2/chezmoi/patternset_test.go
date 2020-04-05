@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func TestPatternSet(t *testing.T) {
@@ -22,9 +21,9 @@ func TestPatternSet(t *testing.T) {
 		},
 		{
 			name: "exact",
-			ps: mustNewPatternSet(t, map[string]bool{
-				"foo": true,
-			}),
+			ps: NewPatternSet(
+				withAdd("foo", true),
+			),
 			expectMatches: map[string]bool{
 				"foo": true,
 				"bar": false,
@@ -32,9 +31,9 @@ func TestPatternSet(t *testing.T) {
 		},
 		{
 			name: "wildcard",
-			ps: mustNewPatternSet(t, map[string]bool{
-				"b*": true,
-			}),
+			ps: NewPatternSet(
+				withAdd("b*", true),
+			),
 			expectMatches: map[string]bool{
 				"foo": false,
 				"bar": true,
@@ -43,10 +42,10 @@ func TestPatternSet(t *testing.T) {
 		},
 		{
 			name: "exclude",
-			ps: mustNewPatternSet(t, map[string]bool{
-				"b*":  true,
-				"baz": false,
-			}),
+			ps: NewPatternSet(
+				withAdd("b*", true),
+				withAdd("baz", false),
+			),
 			expectMatches: map[string]bool{
 				"foo": false,
 				"bar": true,
@@ -62,10 +61,8 @@ func TestPatternSet(t *testing.T) {
 	}
 }
 
-func mustNewPatternSet(t *testing.T, patterns map[string]bool) *PatternSet {
-	ps := NewPatternSet()
-	for pattern, exclude := range patterns {
-		require.NoError(t, ps.Add(pattern, exclude))
+func withAdd(pattern string, include bool) PatternSetOption {
+	return func(ps *PatternSet) {
+		ps.Add(pattern, include)
 	}
-	return ps
 }

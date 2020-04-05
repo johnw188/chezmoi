@@ -2,12 +2,14 @@ package chezmoi
 
 import (
 	"archive/tar"
+	"bufio"
 	"bytes"
 	"fmt"
 	"os"
 	"os/user"
 	"path"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 	"text/template"
@@ -22,6 +24,7 @@ var DefaultTemplateOptions = []string{"missingkey=error"}
 
 type sourceEntryState interface {
 	SourcePath() string
+	EntryState(vfs.FS, os.FileMode, string) EntryState
 }
 
 type dirSourceState struct {
@@ -71,13 +74,6 @@ func WithTemplateOptions(templateOptions []string) SourceStateOption {
 	}
 }
 
-// WithTemplates sets the templates.
-func WithTemplates(templates map[string]*template.Template) SourceStateOption {
-	return func(s *SourceState) {
-		s.templates = templates
-	}
-}
-
 // NewSourceState creates a new source state with the given options.
 func NewSourceState(options ...SourceStateOption) *SourceState {
 	s := &SourceState{
@@ -90,6 +86,50 @@ func NewSourceState(options ...SourceStateOption) *SourceState {
 		o(s)
 	}
 	return s
+}
+
+// Archive writes s to w.
+func (s *SourceState) Archive(fs vfs.FS, umask os.FileMode, w *tar.Writer) error {
+	var (
+		now   = time.Now()
+		uid   int
+		gid   int
+		Uname string
+		Gname string
+	)
+
+	// Attempt to lookup the current user. Ignore errors because the defaults
+	// are reasonable.
+	if currentUser, err := user.Current(); err == nil {
+		uid, _ = strconv.Atoi(currentUser.Uid)
+		gid, _ = strconv.Atoi(currentUser.Gid)
+		Uname = currentUser.Username
+		if group, err := user.LookupGroupId(currentUser.Gid); err != nil {
+			Gname = group.Name
+		}
+	}
+
+	headerTemplate := tar.Header{
+		Uid:        uid,
+		Gid:        gid,
+		Uname:      Uname,
+		Gname:      Gname,
+		ModTime:    now,
+		AccessTime: now,
+		ChangeTime: now,
+	}
+
+	for _, targetName := range s.sortedTargetNames() {
+		entryState := s.entryStates[targetName].EntryState(fs, umask, targetName)
+		if entryState == nil {
+			continue
+		}
+		if err := entryState.Archive(w, &headerTemplate, umask); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // ExecuteTemplateData returns the result of executing template data.
@@ -120,16 +160,19 @@ func (s *SourceState) Read(fs vfs.FS, sourcePath string) error {
 		if thisPath == sourcePath {
 			return nil
 		}
+		relPath := strings.TrimPrefix(thisPath, sourcePath+pathSeparator)
+		dir, sourceName := path.Split(relPath)
+		targetDirName := getTargetDirName(dir)
 		switch {
 		case info.Name() == ignoreName:
-			// FIXME
-			return nil
+			return s.addPatterns(fs, s.ignore, thisPath, dir)
 		case info.Name() == removeName:
-			// FIXME
-			return nil
+			return s.addPatterns(fs, s.remove, thisPath, targetDirName)
 		case info.Name() == templatesDirName:
-			// FIXME
-			return nil
+			if err := s.addTemplatesDir(fs, thisPath); err != nil {
+				return err
+			}
+			return filepath.SkipDir
 		case info.Name() == versionName:
 			data, err := fs.ReadFile(thisPath)
 			if err != nil {
@@ -148,11 +191,8 @@ func (s *SourceState) Read(fs vfs.FS, sourcePath string) error {
 				return filepath.SkipDir
 			}
 			return nil
-		}
-		relPath := strings.TrimPrefix(thisPath, sourcePath+pathSeparator)
-		dir, sourceName := path.Split(relPath)
-		targetDirName := getTargetDirName(dir)
-		switch {
+		case s.ignore.Match(relPath):
+			return nil
 		case info.IsDir():
 			dirAttributes := ParseDirAttributes(sourceName)
 			targetPath := path.Join(targetDirName, dirAttributes.Name)
@@ -181,45 +221,141 @@ func (s *SourceState) Read(fs vfs.FS, sourcePath string) error {
 	})
 }
 
+func (s *SourceState) addPatterns(fs vfs.FS, ps *PatternSet, path, relPath string) error {
+	data, err := s.executeTemplate(fs, path)
+	if err != nil {
+		return err
+	}
+	dir := filepath.Dir(relPath)
+	scanner := bufio.NewScanner(bytes.NewReader(data))
+	for scanner.Scan() {
+		text := scanner.Text()
+		if index := strings.IndexRune(text, '#'); index != -1 {
+			text = text[:index]
+		}
+		text = strings.TrimSpace(text)
+		if text == "" {
+			continue
+		}
+		include := true
+		if strings.HasPrefix(text, "!") {
+			include = false
+			text = strings.TrimPrefix(text, "!")
+		}
+		pattern := filepath.Join(dir, text)
+		if err := ps.Add(pattern, include); err != nil {
+			return fmt.Errorf("%s: %w", path, err)
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return fmt.Errorf("%s: %w", path, err)
+	}
+	return nil
+}
+
+func (s *SourceState) addTemplatesDir(fs vfs.FS, path string) error {
+	return vfs.Walk(fs, path, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+		switch {
+		case info.Mode().IsRegular():
+			contents, err := fs.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			name := strings.TrimPrefix(path, path+pathSeparator)
+			tmpl, err := template.New(name).Parse(string(contents))
+			if err != nil {
+				return err
+			}
+			if s.templates == nil {
+				s.templates = make(map[string]*template.Template)
+			}
+			s.templates[name] = tmpl
+			return nil
+		case info.IsDir():
+			return nil
+		default:
+			return fmt.Errorf("%s: unsupported file type", path)
+		}
+	})
+}
+
+func (s *SourceState) executeTemplate(fs vfs.FS, path string) ([]byte, error) {
+	data, err := fs.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+	return s.ExecuteTemplateData(path, data)
+}
+
+func (s *SourceState) sortedTargetNames() []string {
+	targetNames := make([]string, 0, len(s.entryStates))
+	for targetName := range s.entryStates {
+		targetNames = append(targetNames, targetName)
+	}
+	sort.Strings(targetNames)
+	return targetNames
+}
+
+// EntryState returns d's entry state.
+func (d *dirSourceState) EntryState(fs vfs.FS, umask os.FileMode, path string) EntryState {
+	mode := os.ModeDir | 0777
+	if d.attributes.Private {
+		mode &^= 077
+	}
+	return &DirState{
+		path: path,
+		mode: mode &^ umask,
+	}
+}
+
 // SourcePath returns d's source path.
 func (d *dirSourceState) SourcePath() string {
 	return d.sourcePath
 }
 
+// EntryState returns f's entry state.
+func (f *fileSourceState) EntryState(fs vfs.FS, umask os.FileMode, path string) EntryState {
+	switch f.attributes.Type {
+	case SourceFileTypeFile:
+		mode := os.FileMode(0666)
+		if f.attributes.Executable {
+			mode |= 0111
+		}
+		if f.attributes.Private {
+			mode &^= 077
+		}
+		// FIXME templates
+		// FIXME encrypted
+		return &FileState{
+			path: path,
+			mode: mode,
+			contentsFunc: func() ([]byte, error) {
+				return fs.ReadFile(f.sourcePath)
+			},
+		}
+	case SourceFileTypeSymlink:
+		return &SymlinkState{
+			path: path,
+			mode: os.ModeSymlink,
+			linknameFunc: func() (string, error) {
+				linknameBytes, err := fs.ReadFile(f.sourcePath)
+				if err != nil {
+					return "", err
+				}
+				return string(linknameBytes), nil
+			},
+		}
+	default:
+		return nil
+	}
+}
+
 // SourcePath returns f's source path.
 func (f *fileSourceState) SourcePath() string {
 	return f.sourcePath
-}
-
-func getTarHeaderTemplate() *tar.Header {
-	var (
-		now   = time.Now()
-		uid   int
-		gid   int
-		Uname string
-		Gname string
-	)
-
-	// Attempt to lookup the current user. Ignore errors because the defaults
-	// are reasonable.
-	if currentUser, err := user.Current(); err == nil {
-		uid, _ = strconv.Atoi(currentUser.Uid)
-		gid, _ = strconv.Atoi(currentUser.Gid)
-		Uname = currentUser.Username
-		if group, err := user.LookupGroupId(currentUser.Gid); err != nil {
-			Gname = group.Name
-		}
-	}
-
-	return &tar.Header{
-		Uid:        uid,
-		Gid:        gid,
-		Uname:      Uname,
-		Gname:      Gname,
-		ModTime:    now,
-		AccessTime: now,
-		ChangeTime: now,
-	}
 }
 
 func getTargetDirName(dir string) string {

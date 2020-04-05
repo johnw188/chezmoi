@@ -29,11 +29,8 @@ type EntryState interface {
 
 // A DirState represents the state of a directory.
 type DirState struct {
-	path        string
-	mode        os.FileMode
-	entriesFunc func() ([]os.FileInfo, error)
-	entries     []os.FileInfo
-	entriesErr  error
+	path string
+	mode os.FileMode
 }
 
 // A FileState represents the state of a file.
@@ -86,9 +83,6 @@ func NewDirState(fs vfs.FS, path string, info os.FileInfo) *DirState {
 	return &DirState{
 		path: path,
 		mode: info.Mode(),
-		entriesFunc: func() ([]os.FileInfo, error) {
-			return fs.ReadDir(path)
-		},
 	}
 }
 
@@ -113,15 +107,6 @@ func (d *DirState) Archive(w *tar.Writer, headerTemplate *tar.Header, umask os.F
 	header.Name = d.path
 	header.Mode = int64(d.mode & os.ModePerm &^ umask)
 	return w.WriteHeader(&header)
-}
-
-// Entries returns d's entries.
-func (d *DirState) Entries() ([]os.FileInfo, error) {
-	if d.entriesFunc != nil {
-		d.entries, d.entriesErr = d.entriesFunc()
-		d.entriesFunc = nil
-	}
-	return d.entries, d.entriesErr
 }
 
 // Equal returns true if d is equal to other. It does not recurse.
