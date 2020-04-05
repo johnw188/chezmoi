@@ -399,8 +399,9 @@ func (f *fileSourceState) EntryState(fs vfs.FS, umask os.FileMode, path string) 
 		// FIXME templates
 		// FIXME encrypted
 		return &FileState{
-			path: path,
-			mode: mode,
+			path:  path,
+			mode:  mode,
+			empty: f.attributes.Empty,
 			contentsFunc: func() ([]byte, error) {
 				return fs.ReadFile(f.sourcePath)
 			},

@@ -1,7 +1,6 @@
 package chezmoi
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -24,8 +23,24 @@ func TestEntryStateApplyAndEqual(t *testing.T) {
 		{
 			name: "file",
 			entryState: &FileState{
+				path:     "/home/user/foo",
+				mode:     0644,
+				contents: []byte("bar"),
+			},
+		},
+		{
+			name: "file_empty",
+			entryState: &FileState{
 				path: "/home/user/foo",
 				mode: 0644,
+			},
+		},
+		{
+			name: "file_empty_ok",
+			entryState: &FileState{
+				path:  "/home/user/foo",
+				mode:  0644,
+				empty: true,
 			},
 		},
 		{
@@ -61,9 +76,15 @@ func TestEntryStateApplyAndEqual(t *testing.T) {
 					},
 				},
 				{
-					name: "existing_file",
+					name: "existing_file_empty",
 					root: map[string]interface{}{
 						"/home/user/foo": "",
+					},
+				},
+				{
+					name: "existing_file_contents",
+					root: map[string]interface{}{
+						"/home/user/foo": "baz",
 					},
 				},
 				{
@@ -108,11 +129,11 @@ func TestEntryStateApplyAndEqual(t *testing.T) {
 					// equal to the desired state.
 					newEntryState, err := NewEntryState(fs, fs.Lstat, "/home/user/foo")
 					require.NoError(t, err)
-					require.NotNil(t, newEntryState)
-					require.IsType(t, tc1.entryState, newEntryState)
-					equal1, err := newEntryState.Equal(tc1.entryState)
-					require.NoError(t, err)
-					require.True(t, equal1)
+					if newEntryState != nil {
+						equal1, err := newEntryState.Equal(tc1.entryState)
+						require.NoError(t, err)
+						require.True(t, equal1)
+					}
 					equal2, err := tc1.entryState.Equal(newEntryState)
 					require.NoError(t, err)
 					require.True(t, equal2)
@@ -132,6 +153,11 @@ func entryStateTest(t *testing.T, e EntryState) vfst.Test {
 	case *FileState:
 		expectedContents, err := e.Contents()
 		require.NoError(t, err)
+		if len(expectedContents) == 0 && !e.empty {
+			return vfst.TestPath(e.path,
+				vfst.TestDoesNotExist,
+			)
+		}
 		return vfst.TestPath(e.path,
 			vfst.TestModeIsRegular,
 			vfst.TestModePerm(e.mode&os.ModePerm),
@@ -145,6 +171,6 @@ func entryStateTest(t *testing.T, e EntryState) vfst.Test {
 			vfst.TestSymlinkTarget(expectedLinkname),
 		)
 	default:
-		panic(fmt.Sprintf("%T: unsupported type", e))
+		return nil
 	}
 }

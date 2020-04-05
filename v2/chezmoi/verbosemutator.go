@@ -56,6 +56,11 @@ func (m *VerboseMutator) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
 	return output, err
 }
 
+// ReadDir implements Mutator.ReadDir.
+func (m *VerboseMutator) ReadDir(dirname string) ([]os.FileInfo, error) {
+	return m.m.ReadDir(dirname)
+}
+
 // Mkdir implements Mutator.Mkdir.
 func (m *VerboseMutator) Mkdir(name string, perm os.FileMode) error {
 	action := fmt.Sprintf("mkdir -m %o %s", perm, MaybeShellQuote(name))

@@ -1,6 +1,5 @@
 package chezmoi
 
-// FIXME empty files
 // FIXME data command
 
 import (
@@ -22,7 +21,6 @@ type EntryState interface {
 	Mode() os.FileMode
 	Equal(EntryState) (bool, error)
 	Path() string
-	Write(Mutator, os.FileMode, string) error
 }
 
 // A DirState represents the state of a directory.
@@ -35,6 +33,7 @@ type DirState struct {
 type FileState struct {
 	path           string
 	mode           os.FileMode
+	empty          bool
 	contentsFunc   func() ([]byte, error)
 	contents       []byte
 	contentsSHA256 []byte
@@ -49,6 +48,8 @@ type SymlinkState struct {
 	linkname     string
 	linknameErr  error
 }
+
+var emptySHA256 = sha256Sum(nil)
 
 // NewEntryState returns a new EntryState populated with path from fs.
 func NewEntryState(fs vfs.FS, statFunc StatFunc, path string) (EntryState, error) {
@@ -66,7 +67,8 @@ func NewEntryState(fs vfs.FS, statFunc StatFunc, path string) (EntryState, error
 func NewEntryStateWithInfo(fs vfs.FS, path string, info os.FileInfo) (EntryState, error) {
 	switch info.Mode() & os.ModeType {
 	case 0:
-		return NewFileState(fs, path, info), nil
+		empty := info.Size() == 0
+		return NewFileState(fs, path, info, empty), nil
 	case os.ModeDir:
 		return NewDirState(fs, path, info), nil
 	case os.ModeSymlink:
@@ -137,10 +139,11 @@ func (d *DirState) Write(mutator Mutator, umask os.FileMode, targetPath string) 
 }
 
 // NewFileState returns a new FileState populated with path and info on fs.
-func NewFileState(fs vfs.FS, path string, info os.FileInfo) *FileState {
+func NewFileState(fs vfs.FS, path string, info os.FileInfo, empty bool) *FileState {
 	return &FileState{
-		path: path,
-		mode: info.Mode(),
+		path:  path,
+		mode:  info.Mode(),
+		empty: empty,
 		contentsFunc: func() ([]byte, error) {
 			return fs.ReadFile(path)
 		},
@@ -149,6 +152,7 @@ func NewFileState(fs vfs.FS, path string, info os.FileInfo) *FileState {
 
 // Apply updates targetPath to be f using mutator.
 func (f *FileState) Apply(mutator Mutator, umask os.FileMode, targetPath string, currentState EntryState) error {
+	var targetContents []byte
 	if currentFileState, ok := currentState.(*FileState); ok {
 		contentsSHA256, err := f.ContentsSHA256()
 		if err != nil {
@@ -158,11 +162,28 @@ func (f *FileState) Apply(mutator Mutator, umask os.FileMode, targetPath string,
 		if err != nil {
 			return err
 		}
-		if bytes.Equal(contentsSHA256, targetContentsSHA256) {
-			if f.mode&^umask == currentFileState.mode&^umask {
-				return nil
+		if bytes.Equal(contentsSHA256, emptySHA256) && !f.empty {
+			return mutator.RemoveAll(targetPath)
+		}
+		if f.mode&os.ModePerm&^umask != currentFileState.mode&os.ModePerm&^umask {
+			if err := mutator.Chmod(targetPath, f.mode&os.ModePerm&^umask); err != nil {
+				return err
 			}
-			return mutator.Chmod(f.path, f.mode&os.ModePerm&^umask)
+		}
+		if bytes.Equal(contentsSHA256, targetContentsSHA256) {
+			return nil
+		}
+		targetContents, err = currentFileState.Contents()
+		if err != nil {
+			return err
+		}
+	} else if currentState == nil && !f.empty {
+		contentsSHA256, err := f.ContentsSHA256()
+		if err != nil {
+			return err
+		}
+		if bytes.Equal(contentsSHA256, emptySHA256) {
+			return nil
 		}
 	}
 	if _, ok := currentState.(*FileState); !ok {
@@ -170,8 +191,7 @@ func (f *FileState) Apply(mutator Mutator, umask os.FileMode, targetPath string,
 			return err
 		}
 	}
-	// FIXME empty
-	return f.Write(mutator, umask, targetPath)
+	return f.Write(mutator, umask, targetPath, targetContents)
 }
 
 // Archive writes f to w.
@@ -198,8 +218,7 @@ func (f *FileState) Contents() ([]byte, error) {
 		f.contents, f.contentsErr = f.contentsFunc()
 		f.contentsFunc = nil
 		if f.contentsErr == nil {
-			contentsSHA256 := sha256.Sum256(f.contents)
-			f.contentsSHA256 = contentsSHA256[:]
+			f.contentsSHA256 = sha256Sum(f.contents)
 		}
 	}
 	return f.contents, f.contentsErr
@@ -211,24 +230,26 @@ func (f *FileState) ContentsSHA256() ([]byte, error) {
 		if _, err := f.Contents(); err != nil {
 			return nil, err
 		}
-		contentsSHA256 := sha256.Sum256(f.contents)
-		f.contentsSHA256 = contentsSHA256[:]
+		f.contentsSHA256 = sha256Sum(f.contents)
 	}
 	return f.contentsSHA256, nil
 }
 
 // Equal returns true if f equals other.
 func (f *FileState) Equal(other EntryState) (bool, error) {
+	contentsSHA256, err := f.ContentsSHA256()
+	if err != nil {
+		return false, err
+	}
+	if other == nil && bytes.Equal(contentsSHA256, emptySHA256) && !f.empty {
+		return true, nil
+	}
 	otherF, ok := other.(*FileState)
 	if !ok {
 		return false, nil
 	}
 	if f.mode != otherF.mode {
 		return false, nil
-	}
-	contentsSHA256, err := f.ContentsSHA256()
-	if err != nil {
-		return false, err
 	}
 	otherContentsSHA256, err := otherF.ContentsSHA256()
 	if err != nil {
@@ -248,12 +269,15 @@ func (f *FileState) Path() string {
 }
 
 // Write writes f to fs.
-func (f *FileState) Write(mutator Mutator, umask os.FileMode, targetPath string) error {
+func (f *FileState) Write(mutator Mutator, umask os.FileMode, targetPath string, currentContents []byte) error {
 	contents, err := f.Contents()
 	if err != nil {
 		return err
 	}
-	return mutator.WriteFile(targetPath, contents, f.mode&os.ModePerm&^umask, nil)
+	if len(contents) == 0 && !f.empty {
+		return nil
+	}
+	return mutator.WriteFile(targetPath, contents, f.mode&os.ModePerm&^umask, currentContents)
 }
 
 // NewSymlinkState returns a new SymlinkState populated with path and info on
@@ -346,4 +370,9 @@ func (s *SymlinkState) Write(mutator Mutator, umask os.FileMode, targetPath stri
 		return err
 	}
 	return mutator.WriteSymlink(linkname, targetPath)
+}
+
+func sha256Sum(data []byte) []byte {
+	sha256SumArr := sha256.Sum256(data)
+	return sha256SumArr[:]
 }
