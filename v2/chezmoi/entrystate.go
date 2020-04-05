@@ -8,7 +8,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"crypto/sha256"
-	"fmt"
 	"os"
 
 	vfs "github.com/twpayne/go-vfs"
@@ -74,7 +73,10 @@ func NewEntryStateWithInfo(fs vfs.FS, path string, info os.FileInfo) (EntryState
 	case os.ModeSymlink:
 		return NewSymlinkState(fs, path, info), nil
 	default:
-		return nil, fmt.Errorf("%s: unsupported file type %d", path, info.Mode()&os.ModeType)
+		return nil, &unsupportedFileTypeError{
+			path: path,
+			mode: info.Mode(),
+		}
 	}
 }
 

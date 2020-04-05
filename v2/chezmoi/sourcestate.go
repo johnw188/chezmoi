@@ -20,6 +20,15 @@ import (
 	vfs "github.com/twpayne/go-vfs"
 )
 
+type unsupportedFileTypeError struct {
+	path string
+	mode os.FileMode
+}
+
+func (e *unsupportedFileTypeError) Error() string {
+	return fmt.Sprintf("%s: unsupported file type %d", e.path, e.mode&os.ModeType)
+}
+
 type sourceEntryState interface {
 	SourcePath() string
 	EntryState(vfs.FS, os.FileMode, string) EntryState
@@ -268,7 +277,10 @@ func (s *SourceState) Read(fs vfs.FS, sourceDir string) error {
 			}
 			return nil
 		default:
-			return fmt.Errorf("%s: unsupported file type", sourcePath)
+			return &unsupportedFileTypeError{
+				path: sourcePath,
+				mode: info.Mode(),
+			}
 		}
 	})
 }
@@ -331,7 +343,10 @@ func (s *SourceState) addTemplatesDir(fs vfs.FS, templateDir string) error {
 		case info.IsDir():
 			return nil
 		default:
-			return fmt.Errorf("%s: unsupported file type", templatePath)
+			return &unsupportedFileTypeError{
+				path: templatePath,
+				mode: info.Mode(),
+			}
 		}
 	})
 }
