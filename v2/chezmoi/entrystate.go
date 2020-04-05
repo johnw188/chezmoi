@@ -95,7 +95,7 @@ func (d *DirState) Apply(mutator Mutator, umask os.FileMode, targetPath string, 
 		if currentDirState.mode&os.ModePerm&^umask == d.mode&os.ModePerm&^umask {
 			return nil
 		}
-		return mutator.Chmod(currentDirState.path, d.mode&os.ModePerm&^umask)
+		return mutator.Chmod(targetPath, d.mode&os.ModePerm&^umask)
 	}
 	if currentState != nil {
 		if err := mutator.RemoveAll(targetPath); err != nil {
