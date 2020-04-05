@@ -42,6 +42,11 @@ func (m *AnyMutator) Mutated() bool {
 	return m.mutated
 }
 
+// ReadDir implements Mutator.ReadDir.
+func (m *AnyMutator) ReadDir(dirname string) ([]os.FileInfo, error) {
+	return m.m.ReadDir(dirname)
+}
+
 // RemoveAll implements Mutator.RemoveAll.
 func (m *AnyMutator) RemoveAll(name string) error {
 	m.mutated = true

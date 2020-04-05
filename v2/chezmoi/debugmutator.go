@@ -45,6 +45,17 @@ func (m *DebugMutator) Mkdir(name string, perm os.FileMode) error {
 	})
 }
 
+// ReadDir implements Mutator.ReadDir.
+func (m *DebugMutator) ReadDir(name string) ([]os.FileInfo, error) {
+	var infos []os.FileInfo
+	err := Debugf("ReadDir(%q)", []interface{}{name}, func() error {
+		var err error
+		infos, err = m.m.ReadDir(name)
+		return err
+	})
+	return infos, err
+}
+
 // RemoveAll implements Mutator.RemoveAll.
 func (m *DebugMutator) RemoveAll(name string) error {
 	return Debugf("RemoveAll(%q)", []interface{}{name}, func() error {
@@ -69,13 +80,13 @@ func (m *DebugMutator) RunCmd(cmd *exec.Cmd) error {
 
 // Stat implements Mutator.Stat.
 func (m *DebugMutator) Stat(name string) (os.FileInfo, error) {
-	var fi os.FileInfo
+	var info os.FileInfo
 	err := Debugf("Stat(%q)", []interface{}{name}, func() error {
 		var err error
-		fi, err = m.m.Stat(name)
+		info, err = m.m.Stat(name)
 		return err
 	})
-	return fi, err
+	return info, err
 }
 
 // WriteFile implements Mutator.WriteFile.

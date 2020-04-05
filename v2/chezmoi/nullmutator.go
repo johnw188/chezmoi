@@ -23,6 +23,11 @@ func (NullMutator) Mkdir(string, os.FileMode) error {
 	return nil
 }
 
+// ReadDir implements Mutator.ReadDir.
+func (NullMutator) ReadDir(string) ([]os.FileInfo, error) {
+	return nil, nil
+}
+
 // RemoveAll implements Mutator.RemoveAll.
 func (NullMutator) RemoveAll(string) error {
 	return nil
