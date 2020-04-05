@@ -1,6 +1,10 @@
 package chezmoi
 
 import (
+	"archive/tar"
+	"bytes"
+	"io"
+	"io/ioutil"
 	"testing"
 	"text/template"
 
@@ -9,6 +13,69 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/twpayne/go-vfs/vfst"
 )
+
+func TestSourceStateArchive(t *testing.T) {
+	fs, cleanup, err := vfst.NewTestFS(map[string]interface{}{
+		"/home/user/.local/share/chezmoi": map[string]interface{}{
+			".chezmoiignore":  "README.md\n",
+			".chezmoiremove":  "*.txt\n",
+			".chezmoiversion": "1.2.3\n",
+			".chezmoitemplates": map[string]interface{}{
+				"foo": "bar",
+			},
+			"README.md": "",
+			"dir": map[string]interface{}{
+				"foo": "bar",
+			},
+			"symlink_foo": "bar",
+		},
+	})
+	require.NoError(t, err)
+	defer cleanup()
+
+	s := NewSourceState()
+	require.NoError(t, s.Read(fs, "/home/user/.local/share/chezmoi"))
+
+	b := &bytes.Buffer{}
+	require.NoError(t, s.Archive(fs, vfst.DefaultUmask, b))
+
+	r := tar.NewReader(b)
+	for _, tc := range []struct {
+		expectedTypeflag byte
+		expectedName     string
+		expectedLinkname string
+		expectedContents []byte
+	}{
+		{
+			expectedTypeflag: tar.TypeDir,
+			expectedName:     "dir",
+		},
+		{
+			expectedTypeflag: tar.TypeReg,
+			expectedName:     "dir/foo",
+			expectedContents: []byte("bar"),
+		},
+		{
+			expectedTypeflag: tar.TypeSymlink,
+			expectedName:     "foo",
+			expectedLinkname: "bar",
+		},
+	} {
+		header, err := r.Next()
+		require.NoError(t, err)
+		assert.Equal(t, tc.expectedTypeflag, header.Typeflag)
+		assert.Equal(t, tc.expectedName, header.Name)
+		assert.Equal(t, tc.expectedLinkname, header.Linkname)
+		if tc.expectedContents != nil {
+			assert.Equal(t, int64(len(tc.expectedContents)), header.Size)
+			actualContents, err := ioutil.ReadAll(r)
+			require.NoError(t, err)
+			assert.Equal(t, tc.expectedContents, actualContents)
+		}
+	}
+	_, err = r.Next()
+	assert.Equal(t, io.EOF, err)
+}
 
 func TestSourceStateRead(t *testing.T) {
 	for _, tc := range []struct {

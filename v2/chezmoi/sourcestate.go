@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io"
 	"os"
 	"os/user"
 	"path"
@@ -88,8 +89,8 @@ func NewSourceState(options ...SourceStateOption) *SourceState {
 	return s
 }
 
-// Archive writes s to w.
-func (s *SourceState) Archive(fs vfs.FS, umask os.FileMode, w *tar.Writer) error {
+// Archive writes a tar archive of the target state of s to w.
+func (s *SourceState) Archive(fs vfs.FS, umask os.FileMode, w io.Writer) error {
 	var (
 		now   = time.Now()
 		uid   int
@@ -119,17 +120,17 @@ func (s *SourceState) Archive(fs vfs.FS, umask os.FileMode, w *tar.Writer) error
 		ChangeTime: now,
 	}
 
+	tarW := tar.NewWriter(w)
 	for _, targetName := range s.sortedTargetNames() {
 		entryState := s.entryStates[targetName].EntryState(fs, umask, targetName)
 		if entryState == nil {
 			continue
 		}
-		if err := entryState.Archive(w, &headerTemplate, umask); err != nil {
+		if err := entryState.Archive(tarW, &headerTemplate, umask); err != nil {
 			return err
 		}
 	}
-
-	return nil
+	return tarW.Close()
 }
 
 // ExecuteTemplateData returns the result of executing template data.
