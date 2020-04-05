@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPatternSet(t *testing.T) {
@@ -22,7 +23,7 @@ func TestPatternSet(t *testing.T) {
 		{
 			name: "exact",
 			ps: NewPatternSet(
-				withAdd("foo", true),
+				withAdd(t, "foo", true),
 			),
 			expectMatches: map[string]bool{
 				"foo": true,
@@ -32,7 +33,7 @@ func TestPatternSet(t *testing.T) {
 		{
 			name: "wildcard",
 			ps: NewPatternSet(
-				withAdd("b*", true),
+				withAdd(t, "b*", true),
 			),
 			expectMatches: map[string]bool{
 				"foo": false,
@@ -43,8 +44,8 @@ func TestPatternSet(t *testing.T) {
 		{
 			name: "exclude",
 			ps: NewPatternSet(
-				withAdd("b*", true),
-				withAdd("baz", false),
+				withAdd(t, "b*", true),
+				withAdd(t, "baz", false),
 			),
 			expectMatches: map[string]bool{
 				"foo": false,
@@ -61,8 +62,8 @@ func TestPatternSet(t *testing.T) {
 	}
 }
 
-func withAdd(pattern string, include bool) PatternSetOption {
+func withAdd(t *testing.T, pattern string, include bool) PatternSetOption {
 	return func(ps *PatternSet) {
-		ps.Add(pattern, include)
+		require.NoError(t, ps.Add(pattern, include))
 	}
 }

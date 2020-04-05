@@ -213,7 +213,7 @@ func TestSourceStateRead(t *testing.T) {
 			expectedSourceState: NewSourceState(
 				withIgnore(
 					NewPatternSet(
-						withAdd("README.md", true),
+						withAdd(t, "README.md", true),
 					),
 				),
 			),
@@ -229,7 +229,7 @@ func TestSourceStateRead(t *testing.T) {
 			expectedSourceState: NewSourceState(
 				withIgnore(
 					NewPatternSet(
-						withAdd("README.md", true),
+						withAdd(t, "README.md", true),
 					),
 				),
 			),
@@ -244,7 +244,7 @@ func TestSourceStateRead(t *testing.T) {
 			expectedSourceState: NewSourceState(
 				withRemove(
 					NewPatternSet(
-						withAdd("*.txt", false),
+						withAdd(t, "*.txt", false),
 					),
 				),
 			),

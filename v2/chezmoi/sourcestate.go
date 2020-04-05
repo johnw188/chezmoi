@@ -40,8 +40,8 @@ type fileSourceState struct {
 
 // A SourceState is a source state.
 type SourceState struct {
-	entryStates     map[string]sourceEntryState
-	gpg             *GPG
+	entryStates map[string]sourceEntryState
+	// gpg             *GPG // FIXME
 	ignore          *PatternSet
 	minVersion      *semver.Version
 	remove          *PatternSet
