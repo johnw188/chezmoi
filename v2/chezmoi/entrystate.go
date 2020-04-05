@@ -18,9 +18,7 @@ type StatFunc func(string) (os.FileInfo, error)
 type EntryState interface {
 	Apply(Mutator, os.FileMode, string, EntryState) error
 	Archive(*tar.Writer, *tar.Header, os.FileMode) error
-	Mode() os.FileMode
 	Equal(EntryState) (bool, error)
-	Path() string
 }
 
 // A DirState represents the state of a directory.
@@ -121,16 +119,6 @@ func (d *DirState) Equal(other EntryState) (bool, error) {
 		return false, nil
 	}
 	return d.mode == otherD.mode, nil
-}
-
-// Mode returns d's mode.
-func (d *DirState) Mode() os.FileMode {
-	return d.mode
-}
-
-// Path returns d's path.
-func (d *DirState) Path() string {
-	return d.path
 }
 
 // Write writes d to fs.
@@ -258,16 +246,6 @@ func (f *FileState) Equal(other EntryState) (bool, error) {
 	return bytes.Equal(contentsSHA256, otherContentsSHA256), nil
 }
 
-// Mode returns f's mode.
-func (f *FileState) Mode() os.FileMode {
-	return f.mode
-}
-
-// Path returns f's path.
-func (f *FileState) Path() string {
-	return f.path
-}
-
 // Write writes f to fs.
 func (f *FileState) Write(mutator Mutator, umask os.FileMode, targetPath string, currentContents []byte) error {
 	contents, err := f.Contents()
@@ -351,16 +329,6 @@ func (s *SymlinkState) Linkname() (string, error) {
 		s.linkname, s.linknameErr = s.linknameFunc()
 	}
 	return s.linkname, s.linknameErr
-}
-
-// Mode returns s's mode.
-func (s *SymlinkState) Mode() os.FileMode {
-	return s.mode
-}
-
-// Path returns d's path.
-func (s *SymlinkState) Path() string {
-	return s.path
 }
 
 // Write writes s to fs.

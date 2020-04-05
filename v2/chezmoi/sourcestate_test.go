@@ -167,8 +167,8 @@ func TestSourceStateArchive(t *testing.T) {
 		assert.Equal(t, tc.expectedTypeflag, header.Typeflag)
 		assert.Equal(t, tc.expectedName, header.Name)
 		assert.Equal(t, tc.expectedLinkname, header.Linkname)
+		assert.Equal(t, int64(len(tc.expectedContents)), header.Size)
 		if tc.expectedContents != nil {
-			assert.Equal(t, int64(len(tc.expectedContents)), header.Size)
 			actualContents, err := ioutil.ReadAll(r)
 			require.NoError(t, err)
 			assert.Equal(t, tc.expectedContents, actualContents)
