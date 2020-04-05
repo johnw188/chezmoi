@@ -20,9 +20,6 @@ import (
 	vfs "github.com/twpayne/go-vfs"
 )
 
-// DefaultTemplateOptions are the default template options.
-var DefaultTemplateOptions = []string{"missingkey=error"}
-
 type sourceEntryState interface {
 	SourcePath() string
 	EntryState(vfs.FS, os.FileMode, string) EntryState
@@ -157,7 +154,7 @@ func (s *SourceState) Archive(fs vfs.FS, umask os.FileMode, w io.Writer) error {
 		uid, _ = strconv.Atoi(currentUser.Uid)
 		gid, _ = strconv.Atoi(currentUser.Gid)
 		Uname = currentUser.Username
-		if group, err := user.LookupGroupId(currentUser.Gid); err != nil {
+		if group, err := user.LookupGroupId(currentUser.Gid); err == nil {
 			Gname = group.Name
 		}
 	}

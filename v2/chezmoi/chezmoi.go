@@ -26,6 +26,9 @@ const (
 
 const pathSeparator = "/"
 
+// DefaultTemplateOptions are the default template options.
+var DefaultTemplateOptions = []string{"missingkey=error"}
+
 // A PersistentState is an interface to a persistent state.
 type PersistentState interface {
 	Close() error
