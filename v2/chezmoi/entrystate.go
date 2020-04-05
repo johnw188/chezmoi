@@ -2,7 +2,6 @@ package chezmoi
 
 // FIXME empty files
 // FIXME data command
-// FIXME should be able to remove some calls to RemoveAll
 
 import (
 	"archive/tar"
@@ -166,7 +165,7 @@ func (f *FileState) Apply(mutator Mutator, umask os.FileMode, targetPath string,
 			return mutator.Chmod(f.path, f.mode&os.ModePerm&^umask)
 		}
 	}
-	if currentState != nil {
+	if _, ok := currentState.(*FileState); !ok {
 		if err := mutator.RemoveAll(targetPath); err != nil {
 			return err
 		}
@@ -284,7 +283,7 @@ func (s *SymlinkState) Apply(mutator Mutator, umask os.FileMode, targetPath stri
 			return nil
 		}
 	}
-	if currentState != nil {
+	if _, ok := currentState.(*SymlinkState); !ok {
 		if err := mutator.RemoveAll(targetPath); err != nil {
 			return err
 		}
