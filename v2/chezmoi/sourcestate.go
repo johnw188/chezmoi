@@ -100,8 +100,8 @@ func NewSourceState(options ...SourceStateOption) *SourceState {
 		remove:          NewPatternSet(),
 		templateOptions: DefaultTemplateOptions,
 	}
-	for _, o := range options {
-		o(s)
+	for _, option := range options {
+		option(s)
 	}
 	return s
 }

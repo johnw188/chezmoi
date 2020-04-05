@@ -43,6 +43,7 @@ type PersistentState interface {
 }
 
 var modeTypeNames = map[os.FileMode]string{
+	0:                 "file",
 	os.ModeDir:        "dir",
 	os.ModeSymlink:    "symlink",
 	os.ModeNamedPipe:  "named pipe",
