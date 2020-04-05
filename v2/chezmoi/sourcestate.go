@@ -131,9 +131,8 @@ func (s *SourceState) ApplyOne(fs vfs.FS, mutator Mutator, umask os.FileMode, ta
 	if err := entryState.Apply(mutator, umask, targetPath, targetEntryState); err != nil {
 		return err
 	}
-	switch sourceEntryState := sourceEntryState.(type) {
-	case *dirSourceState:
-		if sourceEntryState.attributes.Exact {
+	if dirSourceState, ok := sourceEntryState.(*dirSourceState); ok {
+		if dirSourceState.attributes.Exact {
 			infos, err := mutator.ReadDir(targetPath)
 			if err != nil {
 				return err
