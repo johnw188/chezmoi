@@ -241,6 +241,16 @@ func TestSourceStateRead(t *testing.T) {
 			expectErr: true,
 		},
 		{
+			name: "duplicate_target",
+			root: map[string]interface{}{
+				"/home/user/.local/share/chezmoi": map[string]interface{}{
+					"foo":       "bar",
+					"exact_foo": &vfst.Dir{Perm: 0755},
+				},
+			},
+			expectErr: true,
+		},
+		{
 			name: "symlink",
 			root: map[string]interface{}{
 				"/home/user/.local/share/chezmoi": map[string]interface{}{

@@ -1,5 +1,7 @@
 package chezmoi
 
+// FIXME accumulate all source state warnings/errors
+
 import (
 	"archive/tar"
 	"bufio"
@@ -19,6 +21,15 @@ import (
 	"github.com/coreos/go-semver/semver"
 	vfs "github.com/twpayne/go-vfs"
 )
+
+type duplicateTargetError struct {
+	targetName  string
+	sourcePaths []string
+}
+
+func (e *duplicateTargetError) Error() string {
+	return fmt.Sprintf("%s: duplicate target (%s)", e.targetName, strings.Join(e.sourcePaths, ", "))
+}
 
 type unsupportedFileTypeError struct {
 	path string
@@ -127,16 +138,16 @@ func (s *SourceState) ApplyOne(fs vfs.FS, mutator Mutator, umask os.FileMode, ta
 			if err != nil {
 				return err
 			}
-			names := make([]string, 0, len(infos))
+			baseNames := make([]string, 0, len(infos))
 			for _, info := range infos {
-				if name := info.Name(); name != "." && name != ".." {
-					names = append(names, name)
+				if baseName := info.Name(); baseName != "." && baseName != ".." {
+					baseNames = append(baseNames, baseName)
 				}
 			}
-			sort.Strings(names)
-			for _, name := range names {
-				if _, ok := s.entryStates[path.Join(targetName, name)]; !ok {
-					if err := mutator.RemoveAll(path.Join(targetPath, name)); err != nil {
+			sort.Strings(baseNames)
+			for _, baseName := range baseNames {
+				if _, ok := s.entryStates[path.Join(targetName, baseName)]; !ok {
+					if err := mutator.RemoveAll(path.Join(targetPath, baseName)); err != nil {
 						return err
 					}
 				}
@@ -256,22 +267,34 @@ func (s *SourceState) Read(fs vfs.FS, sourceDir string) error {
 			return nil
 		case info.IsDir():
 			dirAttributes := ParseDirAttributes(sourceName)
-			targetPath := path.Join(targetDirName, dirAttributes.Name)
-			if ses, ok := s.entryStates[targetPath]; ok {
-				return fmt.Errorf("%s: duplicated in source state: %s and %s", targetPath, ses.SourcePath(), sourcePath)
+			targetName := path.Join(targetDirName, dirAttributes.Name)
+			if ses, ok := s.entryStates[targetName]; ok {
+				return &duplicateTargetError{
+					targetName: targetName,
+					sourcePaths: []string{
+						ses.SourcePath(),
+						sourcePath,
+					},
+				}
 			}
-			s.entryStates[targetPath] = &dirSourceState{
+			s.entryStates[targetName] = &dirSourceState{
 				sourcePath: sourcePath,
 				attributes: dirAttributes,
 			}
 			return nil
 		case info.Mode().IsRegular():
 			fileAttributes := ParseFileAttributes(sourceName)
-			targetPath := path.Join(targetDirName, fileAttributes.Name)
-			if ses, ok := s.entryStates[targetPath]; ok {
-				return fmt.Errorf("%s: duplicated in source state: %s and %s", targetPath, ses.SourcePath(), sourcePath)
+			targetName := path.Join(targetDirName, fileAttributes.Name)
+			if ses, ok := s.entryStates[targetName]; ok {
+				return &duplicateTargetError{
+					targetName: targetName,
+					sourcePaths: []string{
+						ses.SourcePath(),
+						sourcePath,
+					},
+				}
 			}
-			s.entryStates[targetPath] = &fileSourceState{
+			s.entryStates[targetName] = &fileSourceState{
 				sourcePath: sourcePath,
 				attributes: fileAttributes,
 			}
