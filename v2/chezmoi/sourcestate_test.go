@@ -14,6 +14,52 @@ import (
 	"github.com/twpayne/go-vfs/vfst"
 )
 
+func TestSourceStateApplyAll(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		root  interface{}
+		tests []interface{}
+	}{
+		{
+			name: "empty",
+			root: map[string]interface{}{
+				"/home/user": map[string]interface{}{
+					".local/share/chezmoi": &vfst.Dir{Perm: 0755},
+				},
+			},
+		},
+		{
+			name: "file",
+			root: map[string]interface{}{
+				"/home/user": map[string]interface{}{
+					".local/share/chezmoi": map[string]interface{}{
+						"foo": "bar",
+					},
+				},
+			},
+			tests: []interface{}{
+				vfst.TestPath("/home/user/foo",
+					vfst.TestModeIsRegular,
+					vfst.TestModePerm(0644),
+					vfst.TestContentsString("bar"),
+				),
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fs, cleanup, err := vfst.NewTestFS(tc.root)
+			require.NoError(t, err)
+			defer cleanup()
+
+			s := NewSourceState()
+			require.NoError(t, s.Read(fs, "/home/user/.local/share/chezmoi"))
+			require.NoError(t, s.ApplyAll(fs, NewFSMutator(fs), vfst.DefaultUmask, "/home/user"))
+
+			vfst.RunTests(t, fs, "", tc.tests...)
+		})
+	}
+}
+
 func TestSourceStateArchive(t *testing.T) {
 	fs, cleanup, err := vfst.NewTestFS(map[string]interface{}{
 		"/home/user/.local/share/chezmoi": map[string]interface{}{
@@ -128,6 +174,16 @@ func TestSourceStateRead(t *testing.T) {
 					},
 				}),
 			),
+		},
+		{
+			name: "duplicate_target",
+			root: map[string]interface{}{
+				"/home/user/.local/share/chezmoi": map[string]interface{}{
+					"foo":      "bar",
+					"foo.tmpl": "bar",
+				},
+			},
+			expectErr: true,
 		},
 		{
 			name: "symlink",

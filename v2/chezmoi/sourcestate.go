@@ -89,6 +89,59 @@ func NewSourceState(options ...SourceStateOption) *SourceState {
 	return s
 }
 
+// ApplyAll updates targetDir to match s using mutator.
+func (s *SourceState) ApplyAll(fs vfs.FS, mutator Mutator, umask os.FileMode, targetDir string) error {
+	for _, targetName := range s.sortedTargetNames() {
+		if err := s.ApplyOne(fs, mutator, umask, targetDir, targetName); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// ApplyOne updates targetName in targetDir to match s using mutator.
+func (s *SourceState) ApplyOne(fs vfs.FS, mutator Mutator, umask os.FileMode, targetDir, targetName string) error {
+	sourceEntryState := s.entryStates[targetName]
+	targetPath := path.Join(targetDir, targetName)
+	targetEntryState, err := NewEntryState(fs, fs.Lstat, targetPath)
+	if err != nil {
+		return err
+	}
+	entryState := sourceEntryState.EntryState(fs, umask, targetName)
+	if entryState == nil {
+		return nil // FIXME scripts
+	}
+	if err := entryState.Apply(mutator, umask, targetPath, targetEntryState); err != nil {
+		return err
+	}
+	switch sourceEntryState := sourceEntryState.(type) {
+	case *dirSourceState:
+		if sourceEntryState.attributes.Exact {
+			infos, err := mutator.ReadDir(targetPath)
+			if err != nil {
+				return err
+			}
+			names := make([]string, 0, len(infos)-2)
+			for _, info := range infos {
+				if name := info.Name(); name != "." && name != ".." {
+					names = append(names, name)
+				}
+			}
+			sort.Strings(names)
+			for _, name := range names {
+				entryName := path.Join(targetName, name)
+				if _, ok := s.entryStates[entryName]; !ok {
+					if err := mutator.RemoveAll(path.Join(targetPath, entryName)); err != nil {
+						return err
+					}
+				}
+			}
+		}
+	}
+	// FIXME chezmoiremove
+	return nil
+}
+
 // Archive writes a tar archive of the target state of s to w.
 func (s *SourceState) Archive(fs vfs.FS, umask os.FileMode, w io.Writer) error {
 	var (

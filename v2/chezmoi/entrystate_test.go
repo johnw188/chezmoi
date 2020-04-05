@@ -99,7 +99,7 @@ func TestEntryStateApplyAndEqual(t *testing.T) {
 
 					// Apply the desired state.
 					mutator := NewFSMutator(fs)
-					require.NoError(t, tc1.entryState.Apply(mutator, vfst.DefaultUmask, initialEntryState))
+					require.NoError(t, tc1.entryState.Apply(mutator, vfst.DefaultUmask, "/home/user/foo", initialEntryState))
 
 					// Verify that the filesystem matches the desired state.
 					vfst.RunTests(t, fs, "", entryStateTest(t, tc1.entryState))

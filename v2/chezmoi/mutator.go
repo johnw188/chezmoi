@@ -10,6 +10,7 @@ type Mutator interface {
 	Chmod(name string, mode os.FileMode) error
 	IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error)
 	Mkdir(name string, perm os.FileMode) error
+	ReadDir(dirname string) ([]os.FileInfo, error)
 	RemoveAll(name string) error
 	Rename(oldpath, newpath string) error
 	RunCmd(cmd *exec.Cmd) error
