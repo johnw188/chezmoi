@@ -1,5 +1,10 @@
 package chezmoi
 
+import (
+	"fmt"
+	"os"
+)
+
 // Suffixes and prefixes.
 const (
 	dotPrefix        = "dot_"
@@ -35,4 +40,20 @@ type PersistentState interface {
 	Delete(bucket, key []byte) error
 	Get(bucket, key []byte) ([]byte, error)
 	Set(bucket, key, value []byte) error
+}
+
+var modeTypeNames = map[os.FileMode]string{
+	os.ModeDir:        "dir",
+	os.ModeSymlink:    "symlink",
+	os.ModeNamedPipe:  "named pipe",
+	os.ModeSocket:     "socket",
+	os.ModeDevice:     "device",
+	os.ModeCharDevice: "char device",
+}
+
+func modeTypeName(mode os.FileMode) string {
+	if name, ok := modeTypeNames[mode&os.ModeType]; ok {
+		return name
+	}
+	return fmt.Sprintf("unknown (%d)", mode&os.ModeType)
 }

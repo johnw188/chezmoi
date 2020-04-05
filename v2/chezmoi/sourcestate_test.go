@@ -183,7 +183,7 @@ func TestSourceStateRead(t *testing.T) {
 		name                string
 		root                interface{}
 		sourceStateOptions  []SourceStateOption
-		expectErr           bool
+		expectedError       string
 		expectedSourceState *SourceState
 	}{
 		{
@@ -238,7 +238,7 @@ func TestSourceStateRead(t *testing.T) {
 					"foo.tmpl": "bar",
 				},
 			},
-			expectErr: true,
+			expectedError: "foo: duplicate target (/home/user/.local/share/chezmoi/foo, /home/user/.local/share/chezmoi/foo.tmpl)",
 		},
 		{
 			name: "duplicate_target",
@@ -248,7 +248,7 @@ func TestSourceStateRead(t *testing.T) {
 					"exact_foo": &vfst.Dir{Perm: 0755},
 				},
 			},
-			expectErr: true,
+			expectedError: "foo: duplicate target (/home/user/.local/share/chezmoi/exact_foo, /home/user/.local/share/chezmoi/foo)",
 		},
 		{
 			name: "symlink",
@@ -257,7 +257,7 @@ func TestSourceStateRead(t *testing.T) {
 					"foo": &vfst.Symlink{Target: "bar"},
 				},
 			},
-			expectErr: true,
+			expectedError: "/home/user/.local/share/chezmoi/foo: unsupported file type symlink",
 		},
 		{
 			name: "script",
@@ -460,8 +460,9 @@ func TestSourceStateRead(t *testing.T) {
 
 			s := NewSourceState(tc.sourceStateOptions...)
 			err = s.Read(fs, "/home/user/.local/share/chezmoi")
-			if tc.expectErr {
+			if tc.expectedError != "" {
 				assert.Error(t, err)
+				assert.Equal(t, tc.expectedError, err.Error())
 				return
 			}
 			require.NoError(t, err)

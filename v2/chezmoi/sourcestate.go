@@ -37,7 +37,7 @@ type unsupportedFileTypeError struct {
 }
 
 func (e *unsupportedFileTypeError) Error() string {
-	return fmt.Sprintf("%s: unsupported file type %d", e.path, e.mode&os.ModeType)
+	return fmt.Sprintf("%s: unsupported file type %s", e.path, modeTypeName(e.mode))
 }
 
 type sourceEntryState interface {
@@ -418,8 +418,6 @@ func (f *fileSourceState) EntryState(fs vfs.FS, umask os.FileMode, path string) 
 		if f.attributes.Private {
 			mode &^= 077
 		}
-		// FIXME templates
-		// FIXME encrypted
 		return &FileState{
 			path:  path,
 			mode:  mode,
