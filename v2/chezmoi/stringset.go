@@ -1,7 +1,5 @@
 package chezmoi
 
-import "sort"
-
 // A StringSet is a set of strings.
 type StringSet map[string]struct{}
 
@@ -25,12 +23,11 @@ func (s StringSet) Contains(element string) bool {
 	return ok
 }
 
-// Elements returns all the elements of s in order.
+// Elements returns all the elements of s.
 func (s StringSet) Elements() []string {
 	elements := make([]string, 0, len(s))
 	for element := range s {
 		elements = append(elements, element)
 	}
-	sort.Strings(elements)
 	return elements
 }

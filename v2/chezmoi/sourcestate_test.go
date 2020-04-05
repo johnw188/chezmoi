@@ -471,6 +471,131 @@ func TestSourceStateRead(t *testing.T) {
 	}
 }
 
+func TestSourceStateRemove(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		root  interface{}
+		tests []vfst.Test
+	}{
+		{
+			name: "empty",
+			root: map[string]interface{}{
+				"/home/user/.local/share/chezmoi": &vfst.Dir{Perm: 0755},
+			},
+		},
+		{
+			name: "dir",
+			root: map[string]interface{}{
+				"/home/user": map[string]interface{}{
+					"dir":     &vfst.Dir{Perm: 0755},
+					"file":    "",
+					"symlink": &vfst.Symlink{Target: "file"},
+					".local/share/chezmoi": map[string]interface{}{
+						".chezmoiremove": "dir\n",
+					},
+				},
+			},
+			tests: []vfst.Test{
+				vfst.TestPath("/home/user/dir",
+					vfst.TestDoesNotExist,
+				),
+				vfst.TestPath("/home/user/file",
+					vfst.TestModeIsRegular,
+				),
+				vfst.TestPath("/home/user/symlink",
+					vfst.TestModeType(os.ModeSymlink),
+				),
+			},
+		},
+		{
+			name: "file",
+			root: map[string]interface{}{
+				"/home/user": map[string]interface{}{
+					"dir":     &vfst.Dir{Perm: 0755},
+					"file":    "",
+					"symlink": &vfst.Symlink{Target: "file"},
+					".local/share/chezmoi": map[string]interface{}{
+						".chezmoiremove": "file\n",
+					},
+				},
+			},
+			tests: []vfst.Test{
+				vfst.TestPath("/home/user/dir",
+					vfst.TestIsDir,
+				),
+				vfst.TestPath("/home/user/file",
+					vfst.TestDoesNotExist,
+				),
+				vfst.TestPath("/home/user/symlink",
+					vfst.TestModeType(os.ModeSymlink),
+				),
+			},
+		},
+		{
+			name: "symlink",
+			root: map[string]interface{}{
+				"/home/user": map[string]interface{}{
+					"dir":     &vfst.Dir{Perm: 0755},
+					"file":    "",
+					"symlink": &vfst.Symlink{Target: "file"},
+					".local/share/chezmoi": map[string]interface{}{
+						".chezmoiremove": "symlink\n",
+					},
+				},
+			},
+			tests: []vfst.Test{
+				vfst.TestPath("/home/user/dir",
+					vfst.TestIsDir,
+				),
+				vfst.TestPath("/home/user/file",
+					vfst.TestModeIsRegular,
+				),
+				vfst.TestPath("/home/user/symlink",
+					vfst.TestDoesNotExist,
+				),
+			},
+		},
+		{
+			name: "exclude_pattern",
+			root: map[string]interface{}{
+				"/home/user": map[string]interface{}{
+					"foo": "",
+					"bar": "",
+					"baz": "",
+					".local/share/chezmoi": map[string]interface{}{
+						".chezmoiremove": "b*\n!*z\n",
+					},
+				},
+			},
+			tests: []vfst.Test{
+				vfst.TestPath("/home/user/foo",
+					vfst.TestModeIsRegular,
+				),
+				vfst.TestPath("/home/user/bar",
+					vfst.TestDoesNotExist,
+				),
+				vfst.TestPath("/home/user/baz",
+					vfst.TestModeIsRegular,
+				),
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fs, cleanup, err := vfst.NewTestFS(tc.root)
+			require.NoError(t, err)
+			defer cleanup()
+
+			s := NewSourceState()
+			require.NoError(t, s.Read(fs, "/home/user/.local/share/chezmoi"))
+
+			mutator := NewFSMutator(fs)
+			require.NoError(t, s.Remove(fs, mutator, vfst.DefaultUmask, "/home/user"))
+
+			vfst.RunTests(t, fs, "", tc.tests)
+		})
+	}
+}
+
 func withEntryStates(entryStates map[string]sourceEntryState) SourceStateOption {
 	return func(s *SourceState) {
 		s.entryStates = entryStates

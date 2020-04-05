@@ -307,19 +307,33 @@ func (s *SourceState) Read(fs vfs.FS, sourceDir string) error {
 	})
 }
 
-// Remove FIXME.
+// Remove removes everything in targetDir that matches s's remove pattern set.
 func (s *SourceState) Remove(fs vfs.FS, mutator Mutator, umask os.FileMode, targetDir string) error {
+	// Build a set of targets to remove.
 	targetDirPrefix := targetDir + pathSeparator
-	targetsToRemove := NewStringSet()
+	targetPathsToRemove := NewStringSet()
 	for include := range s.remove.includes {
 		matches, err := fs.Glob(path.Join(targetDir, include))
 		if err != nil {
 			return err
 		}
 		for _, match := range matches {
-
+			// Don't remove targets that are excluded from remove.
+			if !s.remove.Match(strings.TrimPrefix(match, targetDirPrefix)) {
+				continue
+			}
+			targetPathsToRemove.Add(match)
 		}
 	}
+
+	sortedTargetPathsToRemove := targetPathsToRemove.Elements()
+	sort.Strings(sortedTargetPathsToRemove)
+	for _, targetPath := range sortedTargetPathsToRemove {
+		if err := mutator.RemoveAll(targetPath); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

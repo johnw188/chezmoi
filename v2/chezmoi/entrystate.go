@@ -140,6 +140,10 @@ func NewFileState(fs vfs.FS, path string, info os.FileInfo, empty bool) *FileSta
 
 // Apply updates targetPath to be f using mutator.
 func (f *FileState) Apply(mutator Mutator, umask os.FileMode, targetPath string, currentState EntryState) error {
+	// FIXME tidy up the logic here. The fundamental problem is that
+	// mutator.WriteFile only sets the specified permissions when writing a new
+	// file. The solution is probably to update mutator.WriteFile to remove the
+	// file first if the permissions don't match.
 	var targetContents []byte
 	if currentFileState, ok := currentState.(*FileState); ok {
 		contentsSHA256, err := f.ContentsSHA256()
