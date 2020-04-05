@@ -15,6 +15,7 @@ func TestSourceStateRead(t *testing.T) {
 		name                string
 		root                interface{}
 		sourceStateOptions  []SourceStateOption
+		expectErr           bool
 		expectedSourceState *SourceState
 	}{
 		{
@@ -60,6 +61,15 @@ func TestSourceStateRead(t *testing.T) {
 					},
 				}),
 			),
+		},
+		{
+			name: "symlink",
+			root: map[string]interface{}{
+				"/home/user/.local/share/chezmoi": map[string]interface{}{
+					"foo": &vfst.Symlink{Target: "bar"},
+				},
+			},
+			expectErr: true,
 		},
 		{
 			name: "script",
@@ -261,7 +271,12 @@ func TestSourceStateRead(t *testing.T) {
 			defer cleanup()
 
 			s := NewSourceState(tc.sourceStateOptions...)
-			require.NoError(t, s.Read(fs, "/home/user/.local/share/chezmoi"))
+			err = s.Read(fs, "/home/user/.local/share/chezmoi")
+			if tc.expectErr {
+				assert.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
 			assert.Equal(t, tc.expectedSourceState, s)
 		})
 	}
