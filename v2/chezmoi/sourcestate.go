@@ -307,6 +307,22 @@ func (s *SourceState) Read(fs vfs.FS, sourceDir string) error {
 	})
 }
 
+// Remove FIXME.
+func (s *SourceState) Remove(fs vfs.FS, mutator Mutator, umask os.FileMode, targetDir string) error {
+	targetDirPrefix := targetDir + pathSeparator
+	targetsToRemove := NewStringSet()
+	for include := range s.remove.includes {
+		matches, err := fs.Glob(path.Join(targetDir, include))
+		if err != nil {
+			return err
+		}
+		for _, match := range matches {
+
+		}
+	}
+	return nil
+}
+
 func (s *SourceState) addPatterns(fs vfs.FS, ps *PatternSet, path, relPath string) error {
 	data, err := s.executeTemplate(fs, path)
 	if err != nil {

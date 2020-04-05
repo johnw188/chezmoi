@@ -4,8 +4,8 @@ import "path"
 
 // An PatternSet is a set of patterns.
 type PatternSet struct {
-	includes map[string]struct{}
-	excludes map[string]struct{}
+	includes StringSet
+	excludes StringSet
 }
 
 // A PatternSetOption sets an option on a pattern set.
@@ -14,8 +14,8 @@ type PatternSetOption func(*PatternSet)
 // NewPatternSet returns a new PatternSet.
 func NewPatternSet(options ...PatternSetOption) *PatternSet {
 	ps := &PatternSet{
-		includes: make(map[string]struct{}),
-		excludes: make(map[string]struct{}),
+		includes: NewStringSet(),
+		excludes: NewStringSet(),
 	}
 	for _, option := range options {
 		option(ps)
@@ -29,9 +29,9 @@ func (ps *PatternSet) Add(pattern string, include bool) error {
 		return nil
 	}
 	if include {
-		ps.includes[pattern] = struct{}{}
+		ps.includes.Add(pattern)
 	} else {
-		ps.excludes[pattern] = struct{}{}
+		ps.excludes.Add(pattern)
 	}
 	return nil
 }
