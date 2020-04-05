@@ -153,29 +153,31 @@ func (s *SourceState) ExecuteTemplateData(name string, data []byte) ([]byte, err
 }
 
 // Read reads a source state from sourcePath in fs.
-func (s *SourceState) Read(fs vfs.FS, sourcePath string) error {
-	return vfs.Walk(fs, sourcePath, func(thisPath string, info os.FileInfo, err error) error {
+func (s *SourceState) Read(fs vfs.FS, sourceDir string) error {
+	sourceDirPrefix := filepath.ToSlash(sourceDir) + pathSeparator
+	return vfs.Walk(fs, sourceDir, func(sourcePath string, info os.FileInfo, err error) error {
+		sourcePath = filepath.ToSlash(sourcePath)
 		if err != nil {
 			return err
 		}
-		if thisPath == sourcePath {
+		if sourcePath == sourceDir {
 			return nil
 		}
-		relPath := strings.TrimPrefix(thisPath, sourcePath+pathSeparator)
+		relPath := strings.TrimPrefix(sourcePath, sourceDirPrefix)
 		dir, sourceName := path.Split(relPath)
 		targetDirName := getTargetDirName(dir)
 		switch {
 		case info.Name() == ignoreName:
-			return s.addPatterns(fs, s.ignore, thisPath, dir)
+			return s.addPatterns(fs, s.ignore, sourcePath, dir)
 		case info.Name() == removeName:
-			return s.addPatterns(fs, s.remove, thisPath, targetDirName)
+			return s.addPatterns(fs, s.remove, sourcePath, targetDirName)
 		case info.Name() == templatesDirName:
-			if err := s.addTemplatesDir(fs, thisPath); err != nil {
+			if err := s.addTemplatesDir(fs, sourcePath); err != nil {
 				return err
 			}
 			return filepath.SkipDir
 		case info.Name() == versionName:
-			data, err := fs.ReadFile(thisPath)
+			data, err := fs.ReadFile(sourcePath)
 			if err != nil {
 				return err
 			}
@@ -201,7 +203,7 @@ func (s *SourceState) Read(fs vfs.FS, sourcePath string) error {
 				return fmt.Errorf("%s: duplicated in source state: %s and %s", targetPath, ses.SourcePath(), sourcePath)
 			}
 			s.entryStates[targetPath] = &dirSourceState{
-				sourcePath: thisPath,
+				sourcePath: sourcePath,
 				attributes: dirAttributes,
 			}
 			return nil
@@ -212,12 +214,12 @@ func (s *SourceState) Read(fs vfs.FS, sourcePath string) error {
 				return fmt.Errorf("%s: duplicated in source state: %s and %s", targetPath, ses.SourcePath(), sourcePath)
 			}
 			s.entryStates[targetPath] = &fileSourceState{
-				sourcePath: thisPath,
+				sourcePath: sourcePath,
 				attributes: fileAttributes,
 			}
 			return nil
 		default:
-			return fmt.Errorf("%s: unsupported file type", thisPath)
+			return fmt.Errorf("%s: unsupported file type", sourcePath)
 		}
 	})
 }
@@ -254,18 +256,20 @@ func (s *SourceState) addPatterns(fs vfs.FS, ps *PatternSet, path, relPath strin
 	return nil
 }
 
-func (s *SourceState) addTemplatesDir(fs vfs.FS, path string) error {
-	return vfs.Walk(fs, path, func(path string, info os.FileInfo, err error) error {
+func (s *SourceState) addTemplatesDir(fs vfs.FS, templateDir string) error {
+	templateDirPrefix := filepath.ToSlash(templateDir) + pathSeparator
+	return vfs.Walk(fs, templateDir, func(templatePath string, info os.FileInfo, err error) error {
+		templatePath = filepath.ToSlash(templatePath)
 		if err != nil {
 			return err
 		}
 		switch {
 		case info.Mode().IsRegular():
-			contents, err := fs.ReadFile(path)
+			contents, err := fs.ReadFile(templatePath)
 			if err != nil {
 				return err
 			}
-			name := strings.TrimPrefix(path, path+pathSeparator)
+			name := strings.TrimPrefix(templatePath, templateDirPrefix)
 			tmpl, err := template.New(name).Parse(string(contents))
 			if err != nil {
 				return err
@@ -278,7 +282,7 @@ func (s *SourceState) addTemplatesDir(fs vfs.FS, path string) error {
 		case info.IsDir():
 			return nil
 		default:
-			return fmt.Errorf("%s: unsupported file type", path)
+			return fmt.Errorf("%s: unsupported file type", templatePath)
 		}
 	})
 }

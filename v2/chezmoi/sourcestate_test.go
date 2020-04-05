@@ -261,7 +261,7 @@ func TestSourceStateRead(t *testing.T) {
 			expectedSourceState: NewSourceState(
 				withTemplates(
 					map[string]*template.Template{
-						"/home/user/.local/share/chezmoi/.chezmoitemplates/foo": template.Must(template.New("/home/user/.local/share/chezmoi/.chezmoitemplates/foo").Parse("bar")),
+						"foo": template.Must(template.New("foo").Parse("bar")),
 					},
 				),
 			),
