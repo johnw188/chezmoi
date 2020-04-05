@@ -108,6 +108,7 @@ func TestSourceStateApplyAll(t *testing.T) {
 
 			s := NewSourceState()
 			require.NoError(t, s.Read(fs, "/home/user/.local/share/chezmoi"))
+			require.NoError(t, s.Verify(fs, vfst.DefaultUmask))
 			require.NoError(t, s.ApplyAll(fs, NewFSMutator(fs), vfst.DefaultUmask, "/home/user"))
 
 			vfst.RunTests(t, fs, "", tc.tests...)
@@ -136,6 +137,7 @@ func TestSourceStateArchive(t *testing.T) {
 
 	s := NewSourceState()
 	require.NoError(t, s.Read(fs, "/home/user/.local/share/chezmoi"))
+	require.NoError(t, s.Verify(fs, vfst.DefaultUmask))
 
 	b := &bytes.Buffer{}
 	require.NoError(t, s.Archive(fs, vfst.DefaultUmask, b))
@@ -466,6 +468,7 @@ func TestSourceStateRead(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
+			require.NoError(t, s.Verify(fs, vfst.DefaultUmask))
 			assert.Equal(t, tc.expectedSourceState, s)
 		})
 	}
@@ -587,6 +590,7 @@ func TestSourceStateRemove(t *testing.T) {
 
 			s := NewSourceState()
 			require.NoError(t, s.Read(fs, "/home/user/.local/share/chezmoi"))
+			require.NoError(t, s.Verify(fs, vfst.DefaultUmask))
 
 			mutator := NewFSMutator(fs)
 			require.NoError(t, s.Remove(fs, mutator, vfst.DefaultUmask, "/home/user"))

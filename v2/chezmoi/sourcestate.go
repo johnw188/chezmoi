@@ -337,6 +337,30 @@ func (s *SourceState) Remove(fs vfs.FS, mutator Mutator, umask os.FileMode, targ
 	return nil
 }
 
+// Verify verifies that there are no errors in s. It evaluates every entry state
+// in s.
+func (s *SourceState) Verify(fs vfs.FS, umask os.FileMode) error {
+	for _, targetName := range s.sortedTargetNames() {
+		entryState := s.entryStates[targetName].EntryState(fs, umask, targetName)
+		if entryState == nil {
+			// FIXME scripts
+			continue
+		}
+		switch entryState := entryState.(type) {
+		case *DirState:
+		case *FileState:
+			if _, err := entryState.Contents(); err != nil {
+				return err
+			}
+		case *SymlinkState:
+			if _, err := entryState.Linkname(); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
 func (s *SourceState) addPatterns(fs vfs.FS, ps *PatternSet, path, relPath string) error {
 	data, err := s.executeTemplate(fs, path)
 	if err != nil {
