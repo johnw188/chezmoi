@@ -121,7 +121,7 @@ func (s *SourceState) ApplyOne(fs vfs.FS, mutator Mutator, umask os.FileMode, ta
 			if err != nil {
 				return err
 			}
-			names := make([]string, 0, len(infos)-2)
+			names := make([]string, 0, len(infos))
 			for _, info := range infos {
 				if name := info.Name(); name != "." && name != ".." {
 					names = append(names, name)
@@ -129,9 +129,8 @@ func (s *SourceState) ApplyOne(fs vfs.FS, mutator Mutator, umask os.FileMode, ta
 			}
 			sort.Strings(names)
 			for _, name := range names {
-				entryName := path.Join(targetName, name)
-				if _, ok := s.entryStates[entryName]; !ok {
-					if err := mutator.RemoveAll(path.Join(targetPath, entryName)); err != nil {
+				if _, ok := s.entryStates[path.Join(targetName, name)]; !ok {
+					if err := mutator.RemoveAll(path.Join(targetPath, name)); err != nil {
 						return err
 					}
 				}

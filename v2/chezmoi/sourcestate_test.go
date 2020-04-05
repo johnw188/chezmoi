@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"io"
 	"io/ioutil"
+	"os"
 	"testing"
 	"text/template"
 
@@ -29,6 +30,44 @@ func TestSourceStateApplyAll(t *testing.T) {
 			},
 		},
 		{
+			name: "dir",
+			root: map[string]interface{}{
+				"/home/user": map[string]interface{}{
+					".local/share/chezmoi": map[string]interface{}{
+						"foo": &vfst.Dir{Perm: 0755},
+					},
+				},
+			},
+			tests: []interface{}{
+				vfst.TestPath("/home/user/foo",
+					vfst.TestIsDir,
+					vfst.TestModePerm(0755),
+				),
+			},
+		},
+		{
+			name: "dir_exact",
+			root: map[string]interface{}{
+				"/home/user": map[string]interface{}{
+					"foo": map[string]interface{}{
+						"bar": "",
+					},
+					".local/share/chezmoi": map[string]interface{}{
+						"exact_foo": &vfst.Dir{Perm: 0755},
+					},
+				},
+			},
+			tests: []interface{}{
+				vfst.TestPath("/home/user/foo",
+					vfst.TestIsDir,
+					vfst.TestModePerm(0755),
+				),
+				vfst.TestPath("/home/user/foo/bar",
+					vfst.TestDoesNotExist,
+				),
+			},
+		},
+		{
 			name: "file",
 			root: map[string]interface{}{
 				"/home/user": map[string]interface{}{
@@ -42,6 +81,22 @@ func TestSourceStateApplyAll(t *testing.T) {
 					vfst.TestModeIsRegular,
 					vfst.TestModePerm(0644),
 					vfst.TestContentsString("bar"),
+				),
+			},
+		},
+		{
+			name: "symlink",
+			root: map[string]interface{}{
+				"/home/user": map[string]interface{}{
+					".local/share/chezmoi": map[string]interface{}{
+						"symlink_foo": "bar",
+					},
+				},
+			},
+			tests: []interface{}{
+				vfst.TestPath("/home/user/foo",
+					vfst.TestModeType(os.ModeSymlink),
+					vfst.TestSymlinkTarget("bar"),
 				),
 			},
 		},
