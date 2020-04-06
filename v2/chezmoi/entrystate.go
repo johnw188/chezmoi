@@ -3,7 +3,6 @@ package chezmoi
 // FIXME data command
 
 import (
-	"archive/tar"
 	"bytes"
 	"crypto/sha256"
 	"os"
@@ -17,7 +16,6 @@ type StatFunc func(string) (os.FileInfo, error)
 // An EntryState represents the state of an entry.
 type EntryState interface {
 	Apply(Mutator, os.FileMode, string, EntryState) error
-	Archive(*tar.Writer, *tar.Header, os.FileMode) error
 	Equal(EntryState) (bool, error)
 }
 
@@ -103,15 +101,6 @@ func (d *DirState) Apply(mutator Mutator, umask os.FileMode, targetPath string, 
 	return d.Write(mutator, umask, targetPath)
 }
 
-// Archive writes d to w.
-func (d *DirState) Archive(w *tar.Writer, headerTemplate *tar.Header, umask os.FileMode) error {
-	header := *headerTemplate
-	header.Typeflag = tar.TypeDir
-	header.Name = d.path
-	header.Mode = int64(d.mode & os.ModePerm &^ umask)
-	return w.WriteHeader(&header)
-}
-
 // Equal returns true if d is equal to other. It does not recurse.
 func (d *DirState) Equal(other EntryState) (bool, error) {
 	otherD, ok := other.(*DirState)
@@ -184,24 +173,6 @@ func (f *FileState) Apply(mutator Mutator, umask os.FileMode, targetPath string,
 		}
 	}
 	return f.Write(mutator, umask, targetPath, targetContents)
-}
-
-// Archive writes f to w.
-func (f *FileState) Archive(w *tar.Writer, headerTemplate *tar.Header, umask os.FileMode) error {
-	contents, err := f.Contents()
-	if err != nil {
-		return err
-	}
-	header := *headerTemplate
-	header.Typeflag = tar.TypeReg
-	header.Name = f.path
-	header.Size = int64(len(contents))
-	header.Mode = int64(f.mode & os.ModePerm &^ umask)
-	if err := w.WriteHeader(&header); err != nil {
-		return err
-	}
-	_, err = w.Write(contents)
-	return err
 }
 
 // Contents returns e's contents.
@@ -295,19 +266,6 @@ func (s *SymlinkState) Apply(mutator Mutator, umask os.FileMode, targetPath stri
 		}
 	}
 	return s.Write(mutator, umask, targetPath)
-}
-
-// Archive writes s to w.
-func (s *SymlinkState) Archive(w *tar.Writer, headerTemplate *tar.Header, umask os.FileMode) error {
-	linkname, err := s.Linkname()
-	if err != nil {
-		return err
-	}
-	header := *headerTemplate
-	header.Typeflag = tar.TypeSymlink
-	header.Name = s.path
-	header.Linkname = linkname
-	return w.WriteHeader(&header)
 }
 
 // Equal returns true if s is equal to other.

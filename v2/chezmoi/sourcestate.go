@@ -3,20 +3,15 @@ package chezmoi
 // FIXME accumulate all source state warnings/errors
 
 import (
-	"archive/tar"
 	"bufio"
 	"bytes"
 	"fmt"
-	"io"
 	"os"
-	"os/user"
 	"path"
 	"path/filepath"
 	"sort"
-	"strconv"
 	"strings"
 	"text/template"
-	"time"
 
 	"github.com/coreos/go-semver/semver"
 	vfs "github.com/twpayne/go-vfs"
@@ -155,50 +150,6 @@ func (s *SourceState) ApplyOne(fs vfs.FS, mutator Mutator, umask os.FileMode, ta
 	}
 	// FIXME chezmoiremove
 	return nil
-}
-
-// Archive writes a tar archive of the target state of s to w.
-func (s *SourceState) Archive(fs vfs.FS, umask os.FileMode, w io.Writer) error {
-	var (
-		now   = time.Now()
-		uid   int
-		gid   int
-		Uname string
-		Gname string
-	)
-
-	// Attempt to lookup the current user. Ignore errors because the defaults
-	// are reasonable.
-	if currentUser, err := user.Current(); err == nil {
-		uid, _ = strconv.Atoi(currentUser.Uid)
-		gid, _ = strconv.Atoi(currentUser.Gid)
-		Uname = currentUser.Username
-		if group, err := user.LookupGroupId(currentUser.Gid); err == nil {
-			Gname = group.Name
-		}
-	}
-
-	headerTemplate := tar.Header{
-		Uid:        uid,
-		Gid:        gid,
-		Uname:      Uname,
-		Gname:      Gname,
-		ModTime:    now,
-		AccessTime: now,
-		ChangeTime: now,
-	}
-
-	tarW := tar.NewWriter(w)
-	for _, targetName := range s.sortedTargetNames() {
-		entryState := s.entryStates[targetName].EntryState(fs, umask, targetName)
-		if entryState == nil {
-			continue
-		}
-		if err := entryState.Archive(tarW, &headerTemplate, umask); err != nil {
-			return err
-		}
-	}
-	return tarW.Close()
 }
 
 // ExecuteTemplateData returns the result of executing template data.
