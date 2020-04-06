@@ -141,7 +141,7 @@ func TestSourceStateArchive(t *testing.T) {
 
 	b := &bytes.Buffer{}
 	mutator := NewTARMutator(b, NullMutator{}, tar.Header{}, vfst.DefaultUmask)
-	require.NoError(t, s.ApplyAll(fs, mutator, vfst.DefaultUmask, "/home/dir"))
+	require.NoError(t, s.ApplyAll(fs, mutator, vfst.DefaultUmask, "/home/dir")) // FIXME this is broken, I am here
 
 	r := tar.NewReader(b)
 	for _, tc := range []struct {
