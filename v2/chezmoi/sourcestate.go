@@ -35,24 +35,27 @@ func (e *unsupportedFileTypeError) Error() string {
 	return fmt.Sprintf("%s: unsupported file type %s", e.path, modeTypeName(e.mode))
 }
 
-type sourceEntryState interface {
+// A SourceStateEntry represents the state of an entry in the source state.
+type SourceStateEntry interface {
 	SourcePath() string
-	EntryState(vfs.FS, os.FileMode, string) DestState
+	EntryState(vfs.FS, os.FileMode, string) DestStateEntry
 }
 
-type dirSourceState struct {
+// A SourceStateDir represents the state of a directory in the source state.
+type SourceStateDir struct {
 	sourcePath string
 	attributes DirAttributes
 }
 
-type fileSourceState struct {
+// A SourceStateFile represents the state of a file in the source state.
+type SourceStateFile struct {
 	sourcePath string
 	attributes FileAttributes
 }
 
 // A SourceState is a source state.
 type SourceState struct {
-	entryStates map[string]sourceEntryState
+	entryStates map[string]SourceStateEntry
 	// gpg             *GPG // FIXME
 	ignore          *PatternSet
 	minVersion      *semver.Version
@@ -90,7 +93,7 @@ func WithTemplateOptions(templateOptions []string) SourceStateOption {
 // NewSourceState creates a new source state with the given options.
 func NewSourceState(options ...SourceStateOption) *SourceState {
 	s := &SourceState{
-		entryStates:     make(map[string]sourceEntryState),
+		entryStates:     make(map[string]SourceStateEntry),
 		ignore:          NewPatternSet(),
 		remove:          NewPatternSet(),
 		templateOptions: DefaultTemplateOptions,
@@ -126,7 +129,7 @@ func (s *SourceState) ApplyOne(fs vfs.FS, mutator Mutator, umask os.FileMode, ta
 	if err := entryState.Apply(mutator, umask, targetPath, targetEntryState); err != nil {
 		return err
 	}
-	if dirSourceState, ok := sourceEntryState.(*dirSourceState); ok {
+	if dirSourceState, ok := sourceEntryState.(*SourceStateDir); ok {
 		if dirSourceState.attributes.Exact {
 			infos, err := mutator.ReadDir(targetPath)
 			if err != nil {
@@ -227,7 +230,7 @@ func (s *SourceState) Read(fs vfs.FS, sourceDir string) error {
 					},
 				}
 			}
-			s.entryStates[targetName] = &dirSourceState{
+			s.entryStates[targetName] = &SourceStateDir{
 				sourcePath: sourcePath,
 				attributes: dirAttributes,
 			}
@@ -244,7 +247,7 @@ func (s *SourceState) Read(fs vfs.FS, sourceDir string) error {
 					},
 				}
 			}
-			s.entryStates[targetName] = &fileSourceState{
+			s.entryStates[targetName] = &SourceStateFile{
 				sourcePath: sourcePath,
 				attributes: fileAttributes,
 			}
@@ -396,7 +399,7 @@ func (s *SourceState) sortedTargetNames() []string {
 }
 
 // EntryState returns d's entry state.
-func (d *dirSourceState) EntryState(fs vfs.FS, umask os.FileMode, path string) DestState {
+func (d *SourceStateDir) EntryState(fs vfs.FS, umask os.FileMode, path string) DestStateEntry {
 	mode := os.ModeDir | 0777
 	if d.attributes.Private {
 		mode &^= 077
@@ -408,12 +411,12 @@ func (d *dirSourceState) EntryState(fs vfs.FS, umask os.FileMode, path string) D
 }
 
 // SourcePath returns d's source path.
-func (d *dirSourceState) SourcePath() string {
+func (d *SourceStateDir) SourcePath() string {
 	return d.sourcePath
 }
 
 // EntryState returns f's entry state.
-func (f *fileSourceState) EntryState(fs vfs.FS, umask os.FileMode, path string) DestState {
+func (f *SourceStateFile) EntryState(fs vfs.FS, umask os.FileMode, path string) DestStateEntry {
 	switch f.attributes.Type {
 	case SourceFileTypeFile:
 		mode := os.FileMode(0666)
@@ -449,7 +452,7 @@ func (f *fileSourceState) EntryState(fs vfs.FS, umask os.FileMode, path string) 
 }
 
 // SourcePath returns f's source path.
-func (f *fileSourceState) SourcePath() string {
+func (f *SourceStateFile) SourcePath() string {
 	return f.sourcePath
 }
 

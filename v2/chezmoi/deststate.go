@@ -4,16 +4,15 @@ package chezmoi
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"os"
 
 	vfs "github.com/twpayne/go-vfs"
 )
 
-// An DestState represents the state of an entry in the destination state.
-type DestState interface {
-	Apply(Mutator, os.FileMode, string, DestState) error
-	Equal(DestState) (bool, error)
+// An DestStateEntry represents the state of an entry in the destination state.
+type DestStateEntry interface {
+	Apply(Mutator, os.FileMode, string, DestStateEntry) error
+	Equal(DestStateEntry) (bool, error)
 }
 
 // A DestStateDir represents the state of a directory in the destination state.
@@ -45,7 +44,7 @@ type DestDirSymlink struct {
 var emptySHA256 = sha256Sum(nil)
 
 // NewEntryState returns a new EntryState populated with path from fs.
-func NewEntryState(fs vfs.FS, path string) (DestState, error) {
+func NewEntryState(fs vfs.FS, path string) (DestStateEntry, error) {
 	info, err := fs.Lstat(path)
 	switch {
 	case os.IsNotExist(err):
@@ -57,7 +56,7 @@ func NewEntryState(fs vfs.FS, path string) (DestState, error) {
 }
 
 // NewDestStateFromInfo returns a new EntryState populated with path and info on fs.
-func NewDestStateFromInfo(fs vfs.FS, path string, info os.FileInfo) (DestState, error) {
+func NewDestStateFromInfo(fs vfs.FS, path string, info os.FileInfo) (DestStateEntry, error) {
 	switch info.Mode() & os.ModeType {
 	case 0:
 		empty := info.Size() == 0
@@ -83,7 +82,7 @@ func newDestStateDirFromInfo(fs vfs.FS, path string, info os.FileInfo) *DestStat
 }
 
 // Apply updates targetPath to be d using mutator.
-func (d *DestStateDir) Apply(mutator Mutator, umask os.FileMode, targetPath string, currentState DestState) error {
+func (d *DestStateDir) Apply(mutator Mutator, umask os.FileMode, targetPath string, currentState DestStateEntry) error {
 	if currentDirState, ok := currentState.(*DestStateDir); ok {
 		if currentDirState.mode&os.ModePerm&^umask == d.mode&os.ModePerm&^umask {
 			return nil
@@ -99,7 +98,7 @@ func (d *DestStateDir) Apply(mutator Mutator, umask os.FileMode, targetPath stri
 }
 
 // Equal returns true if d is equal to other. It does not recurse.
-func (d *DestStateDir) Equal(other DestState) (bool, error) {
+func (d *DestStateDir) Equal(other DestStateEntry) (bool, error) {
 	otherD, ok := other.(*DestStateDir)
 	if !ok {
 		return false, nil
@@ -125,7 +124,7 @@ func newDestStateFileFromInfo(fs vfs.FS, path string, info os.FileInfo, empty bo
 }
 
 // Apply updates targetPath to be f using mutator.
-func (f *DestStateFile) Apply(mutator Mutator, umask os.FileMode, targetPath string, currentState DestState) error {
+func (f *DestStateFile) Apply(mutator Mutator, umask os.FileMode, targetPath string, currentState DestStateEntry) error {
 	// FIXME tidy up the logic here. The fundamental problem is that
 	// mutator.WriteFile only sets the specified permissions when writing a new
 	// file. The solution is probably to update mutator.WriteFile to remove the
@@ -196,7 +195,7 @@ func (f *DestStateFile) ContentsSHA256() ([]byte, error) {
 }
 
 // Equal returns true if f equals other.
-func (f *DestStateFile) Equal(other DestState) (bool, error) {
+func (f *DestStateFile) Equal(other DestStateEntry) (bool, error) {
 	contentsSHA256, err := f.ContentsSHA256()
 	if err != nil {
 		return false, err
@@ -243,7 +242,7 @@ func newDestStateSymlinkFromInfo(fs vfs.FS, path string, info os.FileInfo) *Dest
 }
 
 // Apply updates target to be s using mutator.
-func (s *DestDirSymlink) Apply(mutator Mutator, umask os.FileMode, targetPath string, currentState DestState) error {
+func (s *DestDirSymlink) Apply(mutator Mutator, umask os.FileMode, targetPath string, currentState DestStateEntry) error {
 	if targetS, ok := currentState.(*DestDirSymlink); ok {
 		linkname, err := s.Linkname()
 		if err != nil {
@@ -266,7 +265,7 @@ func (s *DestDirSymlink) Apply(mutator Mutator, umask os.FileMode, targetPath st
 }
 
 // Equal returns true if s is equal to other.
-func (s *DestDirSymlink) Equal(other DestState) (bool, error) {
+func (s *DestDirSymlink) Equal(other DestStateEntry) (bool, error) {
 	otherS, ok := other.(*DestDirSymlink)
 	if !ok {
 		return false, nil
@@ -297,9 +296,4 @@ func (s *DestDirSymlink) Write(mutator Mutator, umask os.FileMode, targetPath st
 		return err
 	}
 	return mutator.WriteSymlink(linkname, targetPath)
-}
-
-func sha256Sum(data []byte) []byte {
-	sha256SumArr := sha256.Sum256(data)
-	return sha256SumArr[:]
 }

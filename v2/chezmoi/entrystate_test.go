@@ -11,7 +11,7 @@ import (
 func TestEntryStateApplyAndEqual(t *testing.T) {
 	for _, tc1 := range []struct {
 		name       string
-		entryState DestState
+		entryState DestStateEntry
 	}{
 		{
 			name: "dir",
@@ -143,7 +143,7 @@ func TestEntryStateApplyAndEqual(t *testing.T) {
 	}
 }
 
-func entryStateTest(t *testing.T, e DestState) vfst.Test {
+func entryStateTest(t *testing.T, e DestStateEntry) vfst.Test {
 	switch e := e.(type) {
 	case *DestStateDir:
 		return vfst.TestPath(e.path,

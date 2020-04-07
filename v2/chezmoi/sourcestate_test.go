@@ -207,8 +207,8 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
-				withEntryStates(map[string]sourceEntryState{
-					"foo": &dirSourceState{
+				withEntryStates(map[string]SourceStateEntry{
+					"foo": &SourceStateDir{
 						sourcePath: "/home/user/.local/share/chezmoi/foo",
 						attributes: DirAttributes{
 							Name: "foo",
@@ -225,8 +225,8 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
-				withEntryStates(map[string]sourceEntryState{
-					"foo": &fileSourceState{
+				withEntryStates(map[string]SourceStateEntry{
+					"foo": &SourceStateFile{
 						sourcePath: "/home/user/.local/share/chezmoi/foo",
 						attributes: FileAttributes{
 							Name: "foo",
@@ -273,8 +273,8 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
-				withEntryStates(map[string]sourceEntryState{
-					"foo": &fileSourceState{
+				withEntryStates(map[string]SourceStateEntry{
+					"foo": &SourceStateFile{
 						sourcePath: "/home/user/.local/share/chezmoi/run_foo",
 						attributes: FileAttributes{
 							Name: "foo",
@@ -292,8 +292,8 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
-				withEntryStates(map[string]sourceEntryState{
-					"foo": &fileSourceState{
+				withEntryStates(map[string]SourceStateEntry{
+					"foo": &SourceStateFile{
 						sourcePath: "/home/user/.local/share/chezmoi/symlink_foo",
 						attributes: FileAttributes{
 							Name: "foo",
@@ -313,14 +313,14 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
-				withEntryStates(map[string]sourceEntryState{
-					"foo": &dirSourceState{
+				withEntryStates(map[string]SourceStateEntry{
+					"foo": &SourceStateDir{
 						sourcePath: "/home/user/.local/share/chezmoi/foo",
 						attributes: DirAttributes{
 							Name: "foo",
 						},
 					},
-					"foo/bar": &fileSourceState{
+					"foo/bar": &SourceStateFile{
 						sourcePath: "/home/user/.local/share/chezmoi/foo/bar",
 						attributes: FileAttributes{
 							Name: "bar",
@@ -421,8 +421,8 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
-				withEntryStates(map[string]sourceEntryState{
-					"foo": &dirSourceState{
+				withEntryStates(map[string]SourceStateEntry{
+					"foo": &SourceStateDir{
 						sourcePath: "/home/user/.local/share/chezmoi/foo",
 						attributes: DirAttributes{
 							Name: "foo",
@@ -604,7 +604,7 @@ func TestSourceStateRemove(t *testing.T) {
 	}
 }
 
-func withEntryStates(entryStates map[string]sourceEntryState) SourceStateOption {
+func withEntryStates(entryStates map[string]SourceStateEntry) SourceStateOption {
 	return func(s *SourceState) {
 		s.entryStates = entryStates
 	}
