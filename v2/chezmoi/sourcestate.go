@@ -37,7 +37,7 @@ func (e *unsupportedFileTypeError) Error() string {
 
 type sourceEntryState interface {
 	SourcePath() string
-	EntryState(vfs.FS, os.FileMode, string) EntryState
+	EntryState(vfs.FS, os.FileMode, string) DestState
 }
 
 type dirSourceState struct {
@@ -115,7 +115,7 @@ func (s *SourceState) ApplyAll(fs vfs.FS, mutator Mutator, umask os.FileMode, ta
 func (s *SourceState) ApplyOne(fs vfs.FS, mutator Mutator, umask os.FileMode, targetDir, targetName string) error {
 	sourceEntryState := s.entryStates[targetName]
 	targetPath := path.Join(targetDir, targetName)
-	targetEntryState, err := NewEntryState(fs, fs.Lstat, targetPath)
+	targetEntryState, err := NewEntryState(fs, targetPath)
 	if err != nil {
 		return err
 	}
@@ -298,12 +298,12 @@ func (s *SourceState) Verify(fs vfs.FS, umask os.FileMode) error {
 			continue
 		}
 		switch entryState := entryState.(type) {
-		case *DirState:
-		case *FileState:
+		case *DestStateDir:
+		case *DestStateFile:
 			if _, err := entryState.Contents(); err != nil {
 				return err
 			}
-		case *SymlinkState:
+		case *DestDirSymlink:
 			if _, err := entryState.Linkname(); err != nil {
 				return err
 			}
@@ -396,12 +396,12 @@ func (s *SourceState) sortedTargetNames() []string {
 }
 
 // EntryState returns d's entry state.
-func (d *dirSourceState) EntryState(fs vfs.FS, umask os.FileMode, path string) EntryState {
+func (d *dirSourceState) EntryState(fs vfs.FS, umask os.FileMode, path string) DestState {
 	mode := os.ModeDir | 0777
 	if d.attributes.Private {
 		mode &^= 077
 	}
-	return &DirState{
+	return &DestStateDir{
 		path: path,
 		mode: mode &^ umask,
 	}
@@ -413,7 +413,7 @@ func (d *dirSourceState) SourcePath() string {
 }
 
 // EntryState returns f's entry state.
-func (f *fileSourceState) EntryState(fs vfs.FS, umask os.FileMode, path string) EntryState {
+func (f *fileSourceState) EntryState(fs vfs.FS, umask os.FileMode, path string) DestState {
 	switch f.attributes.Type {
 	case SourceFileTypeFile:
 		mode := os.FileMode(0666)
@@ -423,7 +423,7 @@ func (f *fileSourceState) EntryState(fs vfs.FS, umask os.FileMode, path string) 
 		if f.attributes.Private {
 			mode &^= 077
 		}
-		return &FileState{
+		return &DestStateFile{
 			path:  path,
 			mode:  mode,
 			empty: f.attributes.Empty,
@@ -432,7 +432,7 @@ func (f *fileSourceState) EntryState(fs vfs.FS, umask os.FileMode, path string) 
 			},
 		}
 	case SourceFileTypeSymlink:
-		return &SymlinkState{
+		return &DestDirSymlink{
 			path: path,
 			mode: os.ModeSymlink,
 			linknameFunc: func() (string, error) {

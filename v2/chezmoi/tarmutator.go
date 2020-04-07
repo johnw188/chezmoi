@@ -129,16 +129,14 @@ func (m *TARMutator) WriteSymlink(oldname, newname string) error {
 }
 
 func getHeaderTemplate() tar.Header {
+	// Attempt to lookup the current user. Ignore errors because the default
+	// zero values are reasonable.
 	var (
-		now   = time.Now()
 		uid   int
 		gid   int
 		Uname string
 		Gname string
 	)
-
-	// Attempt to lookup the current user. Ignore errors because the defaults
-	// are reasonable.
 	if currentUser, err := user.Current(); err == nil {
 		uid, _ = strconv.Atoi(currentUser.Uid)
 		gid, _ = strconv.Atoi(currentUser.Gid)
@@ -148,6 +146,7 @@ func getHeaderTemplate() tar.Header {
 		}
 	}
 
+	now := time.Now()
 	return tar.Header{
 		Uid:        uid,
 		Gid:        gid,

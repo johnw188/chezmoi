@@ -10,23 +10,20 @@ import (
 	vfs "github.com/twpayne/go-vfs"
 )
 
-// A StatFunc is a function like os.Stat or os.Lstat.
-type StatFunc func(string) (os.FileInfo, error)
-
-// An EntryState represents the state of an entry.
-type EntryState interface {
-	Apply(Mutator, os.FileMode, string, EntryState) error
-	Equal(EntryState) (bool, error)
+// An DestState represents the state of an entry in the destination state.
+type DestState interface {
+	Apply(Mutator, os.FileMode, string, DestState) error
+	Equal(DestState) (bool, error)
 }
 
-// A DirState represents the state of a directory.
-type DirState struct {
+// A DestStateDir represents the state of a directory in the destination state.
+type DestStateDir struct {
 	path string
 	mode os.FileMode
 }
 
-// A FileState represents the state of a file.
-type FileState struct {
+// A DestStateFile represents the state of a file in the destination state.
+type DestStateFile struct {
 	path           string
 	mode           os.FileMode
 	empty          bool
@@ -36,8 +33,8 @@ type FileState struct {
 	contentsErr    error
 }
 
-// A SymlinkState represents the state of a symlink.
-type SymlinkState struct {
+// A DestDirSymlink represents the state of a symlink in the destination state.
+type DestDirSymlink struct {
 	path         string
 	mode         os.FileMode
 	linknameFunc func() (string, error)
@@ -48,27 +45,27 @@ type SymlinkState struct {
 var emptySHA256 = sha256Sum(nil)
 
 // NewEntryState returns a new EntryState populated with path from fs.
-func NewEntryState(fs vfs.FS, statFunc StatFunc, path string) (EntryState, error) {
-	info, err := statFunc(path)
+func NewEntryState(fs vfs.FS, path string) (DestState, error) {
+	info, err := fs.Lstat(path)
 	switch {
 	case os.IsNotExist(err):
 		return nil, nil
 	case err != nil:
 		return nil, err
 	}
-	return NewEntryStateWithInfo(fs, path, info)
+	return NewDestStateFromInfo(fs, path, info)
 }
 
-// NewEntryStateWithInfo returns a new EntryState populated with path and info on fs.
-func NewEntryStateWithInfo(fs vfs.FS, path string, info os.FileInfo) (EntryState, error) {
+// NewDestStateFromInfo returns a new EntryState populated with path and info on fs.
+func NewDestStateFromInfo(fs vfs.FS, path string, info os.FileInfo) (DestState, error) {
 	switch info.Mode() & os.ModeType {
 	case 0:
 		empty := info.Size() == 0
-		return NewFileState(fs, path, info, empty), nil
+		return newDestStateFileFromInfo(fs, path, info, empty), nil
 	case os.ModeDir:
-		return NewDirState(fs, path, info), nil
+		return newDestStateDirFromInfo(fs, path, info), nil
 	case os.ModeSymlink:
-		return NewSymlinkState(fs, path, info), nil
+		return newDestStateSymlinkFromInfo(fs, path, info), nil
 	default:
 		return nil, &unsupportedFileTypeError{
 			path: path,
@@ -77,17 +74,17 @@ func NewEntryStateWithInfo(fs vfs.FS, path string, info os.FileInfo) (EntryState
 	}
 }
 
-// NewDirState returns a new DirState populated with path and info on fs.
-func NewDirState(fs vfs.FS, path string, info os.FileInfo) *DirState {
-	return &DirState{
+// newDestStateDirFromInfo returns a new DirState populated with path and info on fs.
+func newDestStateDirFromInfo(fs vfs.FS, path string, info os.FileInfo) *DestStateDir {
+	return &DestStateDir{
 		path: path,
 		mode: info.Mode(),
 	}
 }
 
 // Apply updates targetPath to be d using mutator.
-func (d *DirState) Apply(mutator Mutator, umask os.FileMode, targetPath string, currentState EntryState) error {
-	if currentDirState, ok := currentState.(*DirState); ok {
+func (d *DestStateDir) Apply(mutator Mutator, umask os.FileMode, targetPath string, currentState DestState) error {
+	if currentDirState, ok := currentState.(*DestStateDir); ok {
 		if currentDirState.mode&os.ModePerm&^umask == d.mode&os.ModePerm&^umask {
 			return nil
 		}
@@ -102,8 +99,8 @@ func (d *DirState) Apply(mutator Mutator, umask os.FileMode, targetPath string, 
 }
 
 // Equal returns true if d is equal to other. It does not recurse.
-func (d *DirState) Equal(other EntryState) (bool, error) {
-	otherD, ok := other.(*DirState)
+func (d *DestStateDir) Equal(other DestState) (bool, error) {
+	otherD, ok := other.(*DestStateDir)
 	if !ok {
 		return false, nil
 	}
@@ -111,13 +108,13 @@ func (d *DirState) Equal(other EntryState) (bool, error) {
 }
 
 // Write writes d to fs.
-func (d *DirState) Write(mutator Mutator, umask os.FileMode, targetPath string) error {
+func (d *DestStateDir) Write(mutator Mutator, umask os.FileMode, targetPath string) error {
 	return mutator.Mkdir(targetPath, d.mode&os.ModePerm&^umask)
 }
 
-// NewFileState returns a new FileState populated with path and info on fs.
-func NewFileState(fs vfs.FS, path string, info os.FileInfo, empty bool) *FileState {
-	return &FileState{
+// newDestStateFileFromInfo returns a new FileState populated with path and info on fs.
+func newDestStateFileFromInfo(fs vfs.FS, path string, info os.FileInfo, empty bool) *DestStateFile {
+	return &DestStateFile{
 		path:  path,
 		mode:  info.Mode(),
 		empty: empty,
@@ -128,13 +125,13 @@ func NewFileState(fs vfs.FS, path string, info os.FileInfo, empty bool) *FileSta
 }
 
 // Apply updates targetPath to be f using mutator.
-func (f *FileState) Apply(mutator Mutator, umask os.FileMode, targetPath string, currentState EntryState) error {
+func (f *DestStateFile) Apply(mutator Mutator, umask os.FileMode, targetPath string, currentState DestState) error {
 	// FIXME tidy up the logic here. The fundamental problem is that
 	// mutator.WriteFile only sets the specified permissions when writing a new
 	// file. The solution is probably to update mutator.WriteFile to remove the
 	// file first if the permissions don't match.
 	var targetContents []byte
-	if currentFileState, ok := currentState.(*FileState); ok {
+	if currentFileState, ok := currentState.(*DestStateFile); ok {
 		contentsSHA256, err := f.ContentsSHA256()
 		if err != nil {
 			return err
@@ -167,7 +164,7 @@ func (f *FileState) Apply(mutator Mutator, umask os.FileMode, targetPath string,
 			return nil
 		}
 	}
-	if _, ok := currentState.(*FileState); !ok {
+	if _, ok := currentState.(*DestStateFile); !ok {
 		if err := mutator.RemoveAll(targetPath); err != nil {
 			return err
 		}
@@ -176,7 +173,7 @@ func (f *FileState) Apply(mutator Mutator, umask os.FileMode, targetPath string,
 }
 
 // Contents returns e's contents.
-func (f *FileState) Contents() ([]byte, error) {
+func (f *DestStateFile) Contents() ([]byte, error) {
 	if f.contentsFunc != nil {
 		f.contents, f.contentsErr = f.contentsFunc()
 		f.contentsFunc = nil
@@ -188,7 +185,7 @@ func (f *FileState) Contents() ([]byte, error) {
 }
 
 // ContentsSHA256 returns the SHA256 sum of f's contents.
-func (f *FileState) ContentsSHA256() ([]byte, error) {
+func (f *DestStateFile) ContentsSHA256() ([]byte, error) {
 	if f.contentsSHA256 == nil {
 		if _, err := f.Contents(); err != nil {
 			return nil, err
@@ -199,7 +196,7 @@ func (f *FileState) ContentsSHA256() ([]byte, error) {
 }
 
 // Equal returns true if f equals other.
-func (f *FileState) Equal(other EntryState) (bool, error) {
+func (f *DestStateFile) Equal(other DestState) (bool, error) {
 	contentsSHA256, err := f.ContentsSHA256()
 	if err != nil {
 		return false, err
@@ -207,7 +204,7 @@ func (f *FileState) Equal(other EntryState) (bool, error) {
 	if other == nil && bytes.Equal(contentsSHA256, emptySHA256) && !f.empty {
 		return true, nil
 	}
-	otherF, ok := other.(*FileState)
+	otherF, ok := other.(*DestStateFile)
 	if !ok {
 		return false, nil
 	}
@@ -222,7 +219,7 @@ func (f *FileState) Equal(other EntryState) (bool, error) {
 }
 
 // Write writes f to fs.
-func (f *FileState) Write(mutator Mutator, umask os.FileMode, targetPath string, currentContents []byte) error {
+func (f *DestStateFile) Write(mutator Mutator, umask os.FileMode, targetPath string, currentContents []byte) error {
 	contents, err := f.Contents()
 	if err != nil {
 		return err
@@ -233,10 +230,10 @@ func (f *FileState) Write(mutator Mutator, umask os.FileMode, targetPath string,
 	return mutator.WriteFile(targetPath, contents, f.mode&os.ModePerm&^umask, currentContents)
 }
 
-// NewSymlinkState returns a new SymlinkState populated with path and info on
+// newDestStateSymlinkFromInfo returns a new SymlinkState populated with path and info on
 // fs.
-func NewSymlinkState(fs vfs.FS, path string, info os.FileInfo) *SymlinkState {
-	return &SymlinkState{
+func newDestStateSymlinkFromInfo(fs vfs.FS, path string, info os.FileInfo) *DestDirSymlink {
+	return &DestDirSymlink{
 		path: path,
 		mode: info.Mode(),
 		linknameFunc: func() (string, error) {
@@ -246,8 +243,8 @@ func NewSymlinkState(fs vfs.FS, path string, info os.FileInfo) *SymlinkState {
 }
 
 // Apply updates target to be s using mutator.
-func (s *SymlinkState) Apply(mutator Mutator, umask os.FileMode, targetPath string, currentState EntryState) error {
-	if targetS, ok := currentState.(*SymlinkState); ok {
+func (s *DestDirSymlink) Apply(mutator Mutator, umask os.FileMode, targetPath string, currentState DestState) error {
+	if targetS, ok := currentState.(*DestDirSymlink); ok {
 		linkname, err := s.Linkname()
 		if err != nil {
 			return err
@@ -260,7 +257,7 @@ func (s *SymlinkState) Apply(mutator Mutator, umask os.FileMode, targetPath stri
 			return nil
 		}
 	}
-	if _, ok := currentState.(*SymlinkState); !ok {
+	if _, ok := currentState.(*DestDirSymlink); !ok {
 		if err := mutator.RemoveAll(targetPath); err != nil {
 			return err
 		}
@@ -269,8 +266,8 @@ func (s *SymlinkState) Apply(mutator Mutator, umask os.FileMode, targetPath stri
 }
 
 // Equal returns true if s is equal to other.
-func (s *SymlinkState) Equal(other EntryState) (bool, error) {
-	otherS, ok := other.(*SymlinkState)
+func (s *DestDirSymlink) Equal(other DestState) (bool, error) {
+	otherS, ok := other.(*DestDirSymlink)
 	if !ok {
 		return false, nil
 	}
@@ -286,7 +283,7 @@ func (s *SymlinkState) Equal(other EntryState) (bool, error) {
 }
 
 // Linkname returns s's linkname.
-func (s *SymlinkState) Linkname() (string, error) {
+func (s *DestDirSymlink) Linkname() (string, error) {
 	if s.linknameFunc != nil {
 		s.linkname, s.linknameErr = s.linknameFunc()
 	}
@@ -294,7 +291,7 @@ func (s *SymlinkState) Linkname() (string, error) {
 }
 
 // Write writes s to fs.
-func (s *SymlinkState) Write(mutator Mutator, umask os.FileMode, targetPath string) error {
+func (s *DestDirSymlink) Write(mutator Mutator, umask os.FileMode, targetPath string) error {
 	linkname, err := s.Linkname()
 	if err != nil {
 		return err

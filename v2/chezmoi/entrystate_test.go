@@ -11,18 +11,18 @@ import (
 func TestEntryStateApplyAndEqual(t *testing.T) {
 	for _, tc1 := range []struct {
 		name       string
-		entryState EntryState
+		entryState DestState
 	}{
 		{
 			name: "dir",
-			entryState: &DirState{
+			entryState: &DestStateDir{
 				path: "/home/user/foo",
 				mode: os.ModeDir | 0755,
 			},
 		},
 		{
 			name: "file",
-			entryState: &FileState{
+			entryState: &DestStateFile{
 				path:     "/home/user/foo",
 				mode:     0644,
 				contents: []byte("bar"),
@@ -30,14 +30,14 @@ func TestEntryStateApplyAndEqual(t *testing.T) {
 		},
 		{
 			name: "file_empty",
-			entryState: &FileState{
+			entryState: &DestStateFile{
 				path: "/home/user/foo",
 				mode: 0644,
 			},
 		},
 		{
 			name: "file_empty_ok",
-			entryState: &FileState{
+			entryState: &DestStateFile{
 				path:  "/home/user/foo",
 				mode:  0644,
 				empty: true,
@@ -45,7 +45,7 @@ func TestEntryStateApplyAndEqual(t *testing.T) {
 		},
 		{
 			name: "symlink",
-			entryState: &SymlinkState{
+			entryState: &DestDirSymlink{
 				path:     "/home/user/foo",
 				mode:     0644,
 				linkname: "bar",
@@ -115,7 +115,7 @@ func TestEntryStateApplyAndEqual(t *testing.T) {
 					defer cleanup()
 
 					// Read the initial entry state from fs.
-					initialEntryState, err := NewEntryState(fs, fs.Lstat, "/home/user/foo")
+					initialEntryState, err := NewEntryState(fs, "/home/user/foo")
 					require.NoError(t, err)
 
 					// Apply the desired state.
@@ -127,7 +127,7 @@ func TestEntryStateApplyAndEqual(t *testing.T) {
 
 					// Read the updated entry state from fs and verify that it is
 					// equal to the desired state.
-					newEntryState, err := NewEntryState(fs, fs.Lstat, "/home/user/foo")
+					newEntryState, err := NewEntryState(fs, "/home/user/foo")
 					require.NoError(t, err)
 					if newEntryState != nil {
 						equal1, err := newEntryState.Equal(tc1.entryState)
@@ -143,14 +143,14 @@ func TestEntryStateApplyAndEqual(t *testing.T) {
 	}
 }
 
-func entryStateTest(t *testing.T, e EntryState) vfst.Test {
+func entryStateTest(t *testing.T, e DestState) vfst.Test {
 	switch e := e.(type) {
-	case *DirState:
+	case *DestStateDir:
 		return vfst.TestPath(e.path,
 			vfst.TestIsDir,
 			vfst.TestModePerm(e.mode&os.ModePerm),
 		)
-	case *FileState:
+	case *DestStateFile:
 		expectedContents, err := e.Contents()
 		require.NoError(t, err)
 		if len(expectedContents) == 0 && !e.empty {
@@ -163,7 +163,7 @@ func entryStateTest(t *testing.T, e EntryState) vfst.Test {
 			vfst.TestModePerm(e.mode&os.ModePerm),
 			vfst.TestContents(expectedContents),
 		)
-	case *SymlinkState:
+	case *DestDirSymlink:
 		expectedLinkname, err := e.Linkname()
 		require.NoError(t, err)
 		return vfst.TestPath(e.path,
