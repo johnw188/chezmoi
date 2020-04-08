@@ -108,7 +108,7 @@ func TestSourceStateApplyAll(t *testing.T) {
 
 			s := NewSourceState()
 			require.NoError(t, s.Read(fs, "/home/user/.local/share/chezmoi"))
-			require.NoError(t, s.Verify(fs, vfst.DefaultUmask))
+			require.NoError(t, s.Evaluate())
 			require.NoError(t, s.ApplyAll(fs, NewFSMutator(fs), vfst.DefaultUmask, "/home/user"))
 
 			vfst.RunTests(t, fs, "", tc.tests...)
@@ -138,7 +138,7 @@ func TestSourceStateArchive(t *testing.T) {
 
 	s := NewSourceState()
 	require.NoError(t, s.Read(fs, "/home/user/.local/share/chezmoi"))
-	require.NoError(t, s.Verify(fs, vfst.DefaultUmask))
+	require.NoError(t, s.Evaluate())
 
 	b := &bytes.Buffer{}
 	var mutator Mutator = NewTARMutator(b, NullMutator{}, tar.Header{}, vfst.DefaultUmask)
@@ -207,9 +207,9 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
-				withEntryStates(map[string]SourceStateEntry{
+				withEntries(map[string]SourceStateEntry{
 					"foo": &SourceStateDir{
-						sourcePath: "/home/user/.local/share/chezmoi/foo",
+						path: "/home/user/.local/share/chezmoi/foo",
 						attributes: DirAttributes{
 							Name: "foo",
 						},
@@ -225,9 +225,9 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
-				withEntryStates(map[string]SourceStateEntry{
+				withEntries(map[string]SourceStateEntry{
 					"foo": &SourceStateFile{
-						sourcePath: "/home/user/.local/share/chezmoi/foo",
+						path: "/home/user/.local/share/chezmoi/foo",
 						attributes: FileAttributes{
 							Name: "foo",
 							Type: SourceFileTypeFile,
@@ -273,9 +273,9 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
-				withEntryStates(map[string]SourceStateEntry{
+				withEntries(map[string]SourceStateEntry{
 					"foo": &SourceStateFile{
-						sourcePath: "/home/user/.local/share/chezmoi/run_foo",
+						path: "/home/user/.local/share/chezmoi/run_foo",
 						attributes: FileAttributes{
 							Name: "foo",
 							Type: SourceFileTypeScript,
@@ -292,9 +292,9 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
-				withEntryStates(map[string]SourceStateEntry{
+				withEntries(map[string]SourceStateEntry{
 					"foo": &SourceStateFile{
-						sourcePath: "/home/user/.local/share/chezmoi/symlink_foo",
+						path: "/home/user/.local/share/chezmoi/symlink_foo",
 						attributes: FileAttributes{
 							Name: "foo",
 							Type: SourceFileTypeSymlink,
@@ -313,15 +313,15 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
-				withEntryStates(map[string]SourceStateEntry{
+				withEntries(map[string]SourceStateEntry{
 					"foo": &SourceStateDir{
-						sourcePath: "/home/user/.local/share/chezmoi/foo",
+						path: "/home/user/.local/share/chezmoi/foo",
 						attributes: DirAttributes{
 							Name: "foo",
 						},
 					},
 					"foo/bar": &SourceStateFile{
-						sourcePath: "/home/user/.local/share/chezmoi/foo/bar",
+						path: "/home/user/.local/share/chezmoi/foo/bar",
 						attributes: FileAttributes{
 							Name: "bar",
 							Type: SourceFileTypeFile,
@@ -421,9 +421,9 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
-				withEntryStates(map[string]SourceStateEntry{
+				withEntries(map[string]SourceStateEntry{
 					"foo": &SourceStateDir{
-						sourcePath: "/home/user/.local/share/chezmoi/foo",
+						path: "/home/user/.local/share/chezmoi/foo",
 						attributes: DirAttributes{
 							Name: "foo",
 						},
@@ -472,7 +472,7 @@ func TestSourceStateRead(t *testing.T) {
 				return
 			}
 			require.NoError(t, err)
-			require.NoError(t, s.Verify(fs, vfst.DefaultUmask))
+			require.NoError(t, s.Evaluate())
 			assert.Equal(t, tc.expectedSourceState, s)
 		})
 	}
@@ -594,7 +594,7 @@ func TestSourceStateRemove(t *testing.T) {
 
 			s := NewSourceState()
 			require.NoError(t, s.Read(fs, "/home/user/.local/share/chezmoi"))
-			require.NoError(t, s.Verify(fs, vfst.DefaultUmask))
+			require.NoError(t, s.Evaluate())
 
 			mutator := NewFSMutator(fs)
 			require.NoError(t, s.Remove(fs, mutator, vfst.DefaultUmask, "/home/user"))
@@ -604,9 +604,9 @@ func TestSourceStateRemove(t *testing.T) {
 	}
 }
 
-func withEntryStates(entryStates map[string]SourceStateEntry) SourceStateOption {
+func withEntries(entries map[string]SourceStateEntry) SourceStateOption {
 	return func(s *SourceState) {
-		s.entryStates = entryStates
+		s.entries = entries
 	}
 }
 
