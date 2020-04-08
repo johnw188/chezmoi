@@ -197,6 +197,7 @@ func (t *TargetStateScript) Run(mutator Mutator) error {
 	}
 
 	// Run the temporary script file.
+	//nolint:gosec
 	c := exec.Command(f.Name())
 	// c.Dir = path.Join(applyOptions.DestDir, filepath.Dir(s.targetName)) // FIXME
 	c.Stdin = os.Stdin

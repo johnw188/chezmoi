@@ -61,13 +61,13 @@ func TestTargetStateEntryApplyAndEqual(t *testing.T) {
 				{
 					name: "not_present",
 					root: map[string]interface{}{
-						"/home/user": &vfst.Dir{Perm: 0755},
+						"/home/user": &vfst.Dir{Perm: 0o755},
 					},
 				},
 				{
 					name: "existing_dir",
 					root: map[string]interface{}{
-						"/home/user/foo": &vfst.Dir{Perm: 0755},
+						"/home/user/foo": &vfst.Dir{Perm: 0o755},
 					},
 				},
 				{
@@ -92,7 +92,7 @@ func TestTargetStateEntryApplyAndEqual(t *testing.T) {
 					name: "existing_file_chmod",
 					root: map[string]interface{}{
 						"/home/user/foo": &vfst.File{
-							Perm: 0755,
+							Perm: 0o755,
 						},
 					},
 				},
