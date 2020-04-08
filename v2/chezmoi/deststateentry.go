@@ -9,7 +9,7 @@ import (
 // An DestStateEntry represents the state of an entry in the destination state.
 type DestStateEntry interface {
 	Path() string
-	Remove(mutator Mutator) error
+	Remove(mutator DestDir) error
 }
 
 // A DestStateAbsent represents the absence of an entry in the destination
@@ -87,7 +87,7 @@ func (d *DestStateAbsent) Path() string {
 }
 
 // Remove removes d.
-func (d *DestStateAbsent) Remove(mutator Mutator) error {
+func (d *DestStateAbsent) Remove(mutator DestDir) error {
 	return nil
 }
 
@@ -97,7 +97,7 @@ func (d *DestStateDir) Path() string {
 }
 
 // Remove removes d.
-func (d *DestStateDir) Remove(mutator Mutator) error {
+func (d *DestStateDir) Remove(mutator DestDir) error {
 	return mutator.RemoveAll(d.path)
 }
 
@@ -107,7 +107,7 @@ func (d *DestStateFile) Path() string {
 }
 
 // Remove removes d.
-func (d *DestStateFile) Remove(mutator Mutator) error {
+func (d *DestStateFile) Remove(mutator DestDir) error {
 	return mutator.RemoveAll(d.path)
 }
 
@@ -117,6 +117,6 @@ func (d *DestStateSymlink) Path() string {
 }
 
 // Remove removes d.
-func (d *DestStateSymlink) Remove(mutator Mutator) error {
+func (d *DestStateSymlink) Remove(mutator DestDir) error {
 	return mutator.RemoveAll(d.path)
 }

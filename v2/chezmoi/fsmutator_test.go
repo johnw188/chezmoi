@@ -1,3 +1,3 @@
 package chezmoi
 
-var _ Mutator = &FSMutator{}
+var _ DestDir = &FSMutator{}

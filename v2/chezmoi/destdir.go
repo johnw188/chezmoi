@@ -15,8 +15,8 @@ type DestDirReader interface {
 	Stat(name string) (os.FileInfo, error)
 }
 
-// A Mutator makes changes.
-type Mutator interface {
+// A DestDir makes changes to a destination directory.
+type DestDir interface {
 	DestDirReader
 	Chmod(name string, mode os.FileMode) error
 	IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error)

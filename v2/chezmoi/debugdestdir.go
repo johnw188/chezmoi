@@ -7,132 +7,132 @@ import (
 	"time"
 )
 
-// A DebugMutator wraps a Mutator and logs all of the actions it executes.
-type DebugMutator struct {
-	m Mutator
+// A DebugDestDir wraps a DestDir and logs all of the actions it executes.
+type DebugDestDir struct {
+	d DestDir
 }
 
-// NewDebugMutator returns a new DebugMutator.
-func NewDebugMutator(m Mutator) *DebugMutator {
-	return &DebugMutator{
-		m: m,
+// NewDebugDestDir returns a new DebugDestDir.
+func NewDebugDestDir(d DestDir) *DebugDestDir {
+	return &DebugDestDir{
+		d: d,
 	}
 }
 
-// Chmod implements Mutator.Chmod.
-func (m *DebugMutator) Chmod(name string, mode os.FileMode) error {
+// Chmod implements DestDir.Chmod.
+func (d *DebugDestDir) Chmod(name string, mode os.FileMode) error {
 	return Debugf("Chmod(%q, 0%o)", []interface{}{name, mode}, func() error {
-		return m.m.Chmod(name, mode)
+		return d.d.Chmod(name, mode)
 	})
 }
 
-// IdempotentCmdOutput implements Mutator.IdempotentCmdOutput.
-func (m *DebugMutator) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
+// IdempotentCmdOutput implements DestDir.IdempotentCmdOutput.
+func (d *DebugDestDir) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
 	var output []byte
 	cmdStr := ShellQuoteArgs(append([]string{cmd.Path}, cmd.Args[1:]...))
 	err := Debugf("IdempotentCmdOutput(%q)", []interface{}{cmdStr}, func() error {
 		var err error
-		output, err = m.m.IdempotentCmdOutput(cmd)
+		output, err = d.d.IdempotentCmdOutput(cmd)
 		return err
 	})
 	return output, err
 }
 
-// Lstat implements Mutator.Lstat.
-func (m *DebugMutator) Lstat(name string) (os.FileInfo, error) {
+// Lstat implements DestDir.Lstat.
+func (d *DebugDestDir) Lstat(name string) (os.FileInfo, error) {
 	var info os.FileInfo
 	err := Debugf("Lstat(%q)", []interface{}{name}, func() error {
 		var err error
-		info, err = m.m.Lstat(name)
+		info, err = d.d.Lstat(name)
 		return err
 	})
 	return info, err
 }
 
-// Mkdir implements Mutator.Mkdir.
-func (m *DebugMutator) Mkdir(name string, perm os.FileMode) error {
+// Mkdir implements DestDir.Mkdir.
+func (d *DebugDestDir) Mkdir(name string, perm os.FileMode) error {
 	return Debugf("Mkdir(%q, 0%o)", []interface{}{name, perm}, func() error {
-		return m.m.Mkdir(name, perm)
+		return d.d.Mkdir(name, perm)
 	})
 }
 
-// ReadDir implements Mutator.ReadDir.
-func (m *DebugMutator) ReadDir(name string) ([]os.FileInfo, error) {
+// ReadDir implements DestDir.ReadDir.
+func (d *DebugDestDir) ReadDir(name string) ([]os.FileInfo, error) {
 	var infos []os.FileInfo
 	err := Debugf("ReadDir(%q)", []interface{}{name}, func() error {
 		var err error
-		infos, err = m.m.ReadDir(name)
+		infos, err = d.d.ReadDir(name)
 		return err
 	})
 	return infos, err
 }
 
-// ReadFile implements Mutator.ReadFile.
-func (m *DebugMutator) ReadFile(filename string) ([]byte, error) {
+// ReadFile implements DestDir.ReadFile.
+func (d *DebugDestDir) ReadFile(filename string) ([]byte, error) {
 	var data []byte
 	err := Debugf("ReadFile(%q)", []interface{}{filename}, func() error {
 		var err error
-		data, err = m.m.ReadFile(filename)
+		data, err = d.d.ReadFile(filename)
 		return err
 	})
 	return data, err
 }
 
-// Readlink implements Mutator.Readlink.
-func (m *DebugMutator) Readlink(name string) (string, error) {
+// Readlink implements DestDir.Readlink.
+func (d *DebugDestDir) Readlink(name string) (string, error) {
 	var linkname string
 	err := Debugf("Readlink(%q)", []interface{}{name}, func() error {
 		var err error
-		linkname, err = m.m.Readlink(name)
+		linkname, err = d.d.Readlink(name)
 		return err
 	})
 	return linkname, err
 }
 
-// RemoveAll implements Mutator.RemoveAll.
-func (m *DebugMutator) RemoveAll(name string) error {
+// RemoveAll implements DestDir.RemoveAll.
+func (d *DebugDestDir) RemoveAll(name string) error {
 	return Debugf("RemoveAll(%q)", []interface{}{name}, func() error {
-		return m.m.RemoveAll(name)
+		return d.d.RemoveAll(name)
 	})
 }
 
-// Rename implements Mutator.Rename.
-func (m *DebugMutator) Rename(oldpath, newpath string) error {
+// Rename implements DestDir.Rename.
+func (d *DebugDestDir) Rename(oldpath, newpath string) error {
 	return Debugf("Rename(%q, %q)", []interface{}{oldpath, newpath}, func() error {
-		return m.Rename(oldpath, newpath)
+		return d.Rename(oldpath, newpath)
 	})
 }
 
-// RunCmd implements Mutator.RunCmd.
-func (m *DebugMutator) RunCmd(cmd *exec.Cmd) error {
+// RunCmd implements DestDir.RunCmd.
+func (d *DebugDestDir) RunCmd(cmd *exec.Cmd) error {
 	cmdStr := ShellQuoteArgs(append([]string{cmd.Path}, cmd.Args[1:]...))
 	return Debugf("Run(%q)", []interface{}{cmdStr}, func() error {
-		return m.m.RunCmd(cmd)
+		return d.d.RunCmd(cmd)
 	})
 }
 
-// Stat implements Mutator.Stat.
-func (m *DebugMutator) Stat(name string) (os.FileInfo, error) {
+// Stat implements DestDir.Stat.
+func (d *DebugDestDir) Stat(name string) (os.FileInfo, error) {
 	var info os.FileInfo
 	err := Debugf("Stat(%q)", []interface{}{name}, func() error {
 		var err error
-		info, err = m.m.Stat(name)
+		info, err = d.d.Stat(name)
 		return err
 	})
 	return info, err
 }
 
-// WriteFile implements Mutator.WriteFile.
-func (m *DebugMutator) WriteFile(name string, data []byte, perm os.FileMode, currData []byte) error {
+// WriteFile implements DestDir.WriteFile.
+func (d *DebugDestDir) WriteFile(name string, data []byte, perm os.FileMode, currData []byte) error {
 	return Debugf("WriteFile(%q, _, 0%o, _)", []interface{}{name, perm}, func() error {
-		return m.m.WriteFile(name, data, perm, currData)
+		return d.d.WriteFile(name, data, perm, currData)
 	})
 }
 
-// WriteSymlink implements Mutator.WriteSymlink.
-func (m *DebugMutator) WriteSymlink(oldname, newname string) error {
+// WriteSymlink implements DestDir.WriteSymlink.
+func (d *DebugDestDir) WriteSymlink(oldname, newname string) error {
 	return Debugf("WriteSymlink(%q, %q)", []interface{}{oldname, newname}, func() error {
-		return m.m.WriteSymlink(oldname, newname)
+		return d.d.WriteSymlink(oldname, newname)
 	})
 }
 

@@ -18,14 +18,14 @@ import (
 // A VerboseMutator wraps an Mutator and logs all of the actions it executes and
 // any errors as pseudo shell commands.
 type VerboseMutator struct {
-	m               Mutator
+	m               DestDir
 	w               io.Writer
 	colored         bool
 	maxDiffDataSize int
 }
 
 // NewVerboseMutator returns a new VerboseMutator.
-func NewVerboseMutator(w io.Writer, m Mutator, colored bool, maxDiffDataSize int) *VerboseMutator {
+func NewVerboseMutator(w io.Writer, m DestDir, colored bool, maxDiffDataSize int) *VerboseMutator {
 	return &VerboseMutator{
 		m:               m,
 		w:               w,

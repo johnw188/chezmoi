@@ -8,11 +8,11 @@ import (
 // DryRunMutator is an Mutator that reads from, but does not write, to a wrapped
 // Mutator.
 type DryRunMutator struct {
-	m Mutator
+	m DestDir
 }
 
 // NewDryRunMutator returns a new DryRunMutator that wraps m.
-func NewDryRunMutator(m Mutator) *DryRunMutator {
+func NewDryRunMutator(m DestDir) *DryRunMutator {
 	return &DryRunMutator{
 		m: m,
 	}

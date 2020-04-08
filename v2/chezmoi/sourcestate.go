@@ -69,7 +69,7 @@ func NewSourceState(options ...SourceStateOption) *SourceState {
 }
 
 // ApplyAll updates targetDir in fs to match s using mutator. FIXME comment
-func (s *SourceState) ApplyAll(mutator Mutator, umask os.FileMode, targetDir string) error {
+func (s *SourceState) ApplyAll(mutator DestDir, umask os.FileMode, targetDir string) error {
 	for _, targetName := range s.sortedTargetNames() {
 		if err := s.ApplyOne(mutator, umask, targetDir, targetName); err != nil {
 			return err
@@ -79,7 +79,7 @@ func (s *SourceState) ApplyAll(mutator Mutator, umask os.FileMode, targetDir str
 }
 
 // ApplyOne updates targetName in targetDir on fs to match s using mutator. FIXME comment
-func (s *SourceState) ApplyOne(mutator Mutator, umask os.FileMode, targetDir, targetName string) error {
+func (s *SourceState) ApplyOne(mutator DestDir, umask os.FileMode, targetDir, targetName string) error {
 	targetPath := path.Join(targetDir, targetName)
 	destStateEntry, err := NewDestStateEntry(mutator, targetPath)
 	if err != nil {
@@ -235,7 +235,7 @@ func (s *SourceState) Read(fs vfs.FS, sourceDir string) error {
 }
 
 // Remove removes everything in targetDir that matches s's remove pattern set.
-func (s *SourceState) Remove(fs vfs.FS, mutator Mutator, umask os.FileMode, targetDir string) error {
+func (s *SourceState) Remove(fs vfs.FS, mutator DestDir, umask os.FileMode, targetDir string) error {
 	// Build a set of targets to remove.
 	targetDirPrefix := targetDir + pathSeparator
 	targetPathsToRemove := NewStringSet()

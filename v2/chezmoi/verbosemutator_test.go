@@ -1,3 +1,3 @@
 package chezmoi
 
-var _ Mutator = &VerboseMutator{}
+var _ DestDir = &VerboseMutator{}
