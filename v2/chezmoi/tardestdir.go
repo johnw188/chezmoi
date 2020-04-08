@@ -12,6 +12,7 @@ import (
 
 // A TARDestDir is a DestDir that writes to a TAR archive.
 type TARDestDir struct {
+	*EmptyDestDir
 	w              *tar.Writer
 	headerTemplate tar.Header
 	umask          os.FileMode
@@ -28,7 +29,7 @@ func NewTARDestDir(w io.Writer, headerTemplate tar.Header, umask os.FileMode) *T
 
 // Chmod implements DestDir.Chmod.
 func (d *TARDestDir) Chmod(name string, mode os.FileMode) error {
-	return os.ErrNotExist
+	return os.ErrPermission
 }
 
 // Close closes m.
@@ -36,19 +37,9 @@ func (d *TARDestDir) Close() error {
 	return d.w.Close()
 }
 
-// Glob implements DestDir.Glob.
-func (d *TARDestDir) Glob(pattern string) ([]string, error) {
-	return nil, nil
-}
-
 // IdempotentCmdOutput implements DestDir.IdempotentCmdOutput.
 func (d *TARDestDir) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
 	return cmd.Output()
-}
-
-// Lstat implements DestDir.Lstat.
-func (d *TARDestDir) Lstat(name string) (os.FileInfo, error) {
-	return nil, os.ErrNotExist
 }
 
 // Mkdir implements DestDir.Mkdir.
@@ -60,40 +51,20 @@ func (d *TARDestDir) Mkdir(name string, perm os.FileMode) error {
 	return d.w.WriteHeader(&header)
 }
 
-// ReadDir implements DestDir.ReadDir.
-func (d *TARDestDir) ReadDir(dirname string) ([]os.FileInfo, error) {
-	return nil, os.ErrNotExist
-}
-
-// ReadFile implements DestDir.ReadFile.
-func (d *TARDestDir) ReadFile(filename string) ([]byte, error) {
-	return nil, os.ErrNotExist
-}
-
-// Readlink implements DestDir.Readlink.
-func (d *TARDestDir) Readlink(name string) (string, error) {
-	return "", os.ErrNotExist
-}
-
 // RemoveAll implements DestDir.RemoveAll.
 func (d *TARDestDir) RemoveAll(name string) error {
-	return os.ErrNotExist
+	return os.ErrPermission
 }
 
 // Rename implements DestDir.Rename.
 func (d *TARDestDir) Rename(oldpath, newpath string) error {
-	return os.ErrNotExist
+	return os.ErrPermission
 }
 
 // RunCmd implements DestDir.RunCmd.
 func (d *TARDestDir) RunCmd(cmd *exec.Cmd) error {
 	// FIXME need to work out what to do with scripts
 	return nil
-}
-
-// Stat implements DestDir.Stat.
-func (d *TARDestDir) Stat(name string) (os.FileInfo, error) {
-	return nil, os.ErrNotExist
 }
 
 // WriteFile implements DestDir.WriteFile.
