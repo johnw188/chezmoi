@@ -37,6 +37,11 @@ func (m *AnyMutator) Mkdir(name string, perm os.FileMode) error {
 	return m.m.Mkdir(name, perm)
 }
 
+// Lstat implements Mutator.Lstat.
+func (m *AnyMutator) Lstat(path string) (os.FileInfo, error) {
+	return m.m.Lstat(path)
+}
+
 // Mutated returns true if any of its methods have been called.
 func (m *AnyMutator) Mutated() bool {
 	return m.mutated
@@ -45,6 +50,16 @@ func (m *AnyMutator) Mutated() bool {
 // ReadDir implements Mutator.ReadDir.
 func (m *AnyMutator) ReadDir(dirname string) ([]os.FileInfo, error) {
 	return m.m.ReadDir(dirname)
+}
+
+// ReadFile implements Mutator.ReadFile.
+func (m *AnyMutator) ReadFile(filename string) ([]byte, error) {
+	return m.m.ReadFile(filename)
+}
+
+// Readlink implements Mutator.Readlink.
+func (m *AnyMutator) Readlink(name string) (string, error) {
+	return m.m.Readlink(name)
 }
 
 // RemoveAll implements Mutator.RemoveAll.

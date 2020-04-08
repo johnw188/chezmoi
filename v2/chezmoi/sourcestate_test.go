@@ -109,7 +109,7 @@ func TestSourceStateApplyAll(t *testing.T) {
 			s := NewSourceState()
 			require.NoError(t, s.Read(fs, "/home/user/.local/share/chezmoi"))
 			require.NoError(t, s.Evaluate(vfst.DefaultUmask))
-			require.NoError(t, s.ApplyAll(fs, NewFSMutator(fs), vfst.DefaultUmask, "/home/user"))
+			require.NoError(t, s.ApplyAll(NewFSMutator(fs), vfst.DefaultUmask, "/home/user"))
 
 			vfst.RunTests(t, fs, "", tc.tests...)
 		})
@@ -140,10 +140,10 @@ func TestSourceStateArchive(t *testing.T) {
 	require.NoError(t, s.Evaluate(vfst.DefaultUmask))
 
 	b := &bytes.Buffer{}
-	var mutator Mutator = NewTARMutator(b, NullMutator{}, tar.Header{}, vfst.DefaultUmask)
+	var mutator Mutator = NewTARMutator(b, tar.Header{}, vfst.DefaultUmask)
 	// mutator = NewVerboseMutator(os.Stderr, mutator, false, 1024)
 	mutator = NewDebugMutator(mutator)
-	require.NoError(t, s.ApplyAll(fs, mutator, vfst.DefaultUmask, ""))
+	require.NoError(t, s.ApplyAll(mutator, vfst.DefaultUmask, ""))
 
 	r := tar.NewReader(b)
 	for _, tc := range []struct {

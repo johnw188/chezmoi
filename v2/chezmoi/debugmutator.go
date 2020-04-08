@@ -38,6 +38,17 @@ func (m *DebugMutator) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
 	return output, err
 }
 
+// Lstat implements Mutator.Lstat.
+func (m *DebugMutator) Lstat(name string) (os.FileInfo, error) {
+	var info os.FileInfo
+	err := Debugf("Lstat(%q)", []interface{}{name}, func() error {
+		var err error
+		info, err = m.m.Lstat(name)
+		return err
+	})
+	return info, err
+}
+
 // Mkdir implements Mutator.Mkdir.
 func (m *DebugMutator) Mkdir(name string, perm os.FileMode) error {
 	return Debugf("Mkdir(%q, 0%o)", []interface{}{name, perm}, func() error {
@@ -54,6 +65,28 @@ func (m *DebugMutator) ReadDir(name string) ([]os.FileInfo, error) {
 		return err
 	})
 	return infos, err
+}
+
+// ReadFile implements Mutator.ReadFile.
+func (m *DebugMutator) ReadFile(filename string) ([]byte, error) {
+	var data []byte
+	err := Debugf("ReadFile(%q)", []interface{}{filename}, func() error {
+		var err error
+		data, err = m.m.ReadFile(filename)
+		return err
+	})
+	return data, err
+}
+
+// Readlink implements Mutator.Readlink.
+func (m *DebugMutator) Readlink(name string) (string, error) {
+	var linkname string
+	err := Debugf("Readlink(%q)", []interface{}{name}, func() error {
+		var err error
+		linkname, err = m.m.Readlink(name)
+		return err
+	})
+	return linkname, err
 }
 
 // RemoveAll implements Mutator.RemoveAll.

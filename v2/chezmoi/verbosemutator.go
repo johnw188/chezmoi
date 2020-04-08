@@ -56,9 +56,24 @@ func (m *VerboseMutator) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
 	return output, err
 }
 
+// Lstat implements Mutator.Lstat.
+func (m *VerboseMutator) Lstat(name string) (os.FileInfo, error) {
+	return m.m.Lstat(name)
+}
+
 // ReadDir implements Mutator.ReadDir.
 func (m *VerboseMutator) ReadDir(dirname string) ([]os.FileInfo, error) {
 	return m.m.ReadDir(dirname)
+}
+
+// ReadFile implements Mutator.ReadFile.
+func (m *VerboseMutator) ReadFile(filename string) ([]byte, error) {
+	return m.m.ReadFile(filename)
+}
+
+// Readlink implements Mutator.Readlink.
+func (m *VerboseMutator) Readlink(name string) (string, error) {
+	return m.m.Readlink(name)
 }
 
 // Mkdir implements Mutator.Mkdir.

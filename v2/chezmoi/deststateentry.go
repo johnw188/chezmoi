@@ -4,8 +4,6 @@ package chezmoi
 
 import (
 	"os"
-
-	vfs "github.com/twpayne/go-vfs"
 )
 
 // An DestStateEntry represents the state of an entry in the destination state.
@@ -40,8 +38,8 @@ type DestStateSymlink struct {
 }
 
 // NewDestStateEntry returns a new DestStateEntry populated with path from fs.
-func NewDestStateEntry(fs vfs.FS, path string) (DestStateEntry, error) {
-	info, err := fs.Lstat(path)
+func NewDestStateEntry(destDirReader DestDirReader, path string) (DestStateEntry, error) {
+	info, err := destDirReader.Lstat(path)
 	switch {
 	case os.IsNotExist(err):
 		return &DestStateAbsent{
@@ -57,7 +55,7 @@ func NewDestStateEntry(fs vfs.FS, path string) (DestStateEntry, error) {
 			perm: info.Mode() & os.ModePerm,
 			lazyContents: &lazyContents{
 				contentsFunc: func() ([]byte, error) {
-					return fs.ReadFile(path)
+					return destDirReader.ReadFile(path)
 				},
 			},
 		}, nil
@@ -71,7 +69,7 @@ func NewDestStateEntry(fs vfs.FS, path string) (DestStateEntry, error) {
 			path: path,
 			lazyLinkname: &lazyLinkname{
 				linknameFunc: func() (string, error) {
-					return fs.Readlink(path)
+					return destDirReader.Readlink(path)
 				},
 			},
 		}, nil

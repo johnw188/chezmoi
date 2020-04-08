@@ -68,20 +68,20 @@ func NewSourceState(options ...SourceStateOption) *SourceState {
 	return s
 }
 
-// ApplyAll updates targetDir in fs to match s using mutator.
-func (s *SourceState) ApplyAll(fs vfs.FS, mutator Mutator, umask os.FileMode, targetDir string) error {
+// ApplyAll updates targetDir in fs to match s using mutator. FIXME comment
+func (s *SourceState) ApplyAll(mutator Mutator, umask os.FileMode, targetDir string) error {
 	for _, targetName := range s.sortedTargetNames() {
-		if err := s.ApplyOne(fs, mutator, umask, targetDir, targetName); err != nil {
+		if err := s.ApplyOne(mutator, umask, targetDir, targetName); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// ApplyOne updates targetName in targetDir on fs to match s using mutator.
-func (s *SourceState) ApplyOne(fs vfs.FS, mutator Mutator, umask os.FileMode, targetDir, targetName string) error {
+// ApplyOne updates targetName in targetDir on fs to match s using mutator. FIXME comment
+func (s *SourceState) ApplyOne(mutator Mutator, umask os.FileMode, targetDir, targetName string) error {
 	targetPath := path.Join(targetDir, targetName)
-	destStateEntry, err := NewDestStateEntry(fs, targetPath)
+	destStateEntry, err := NewDestStateEntry(mutator, targetPath)
 	if err != nil {
 		return err
 	}

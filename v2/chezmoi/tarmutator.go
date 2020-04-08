@@ -23,17 +23,15 @@ func (e *invalidTAROperationError) Error() string {
 // A TARMutator is a mutator that writes to a TAR archive.
 type TARMutator struct {
 	w              *tar.Writer
-	m              Mutator
 	headerTemplate tar.Header
 	umask          os.FileMode
 }
 
 // NewTARMutator returns a new TARMutator that writes a TAR file to w. Commands
 // are executed via m.
-func NewTARMutator(w io.Writer, m Mutator, headerTemplate tar.Header, umask os.FileMode) *TARMutator {
+func NewTARMutator(w io.Writer, headerTemplate tar.Header, umask os.FileMode) *TARMutator {
 	return &TARMutator{
 		w:              tar.NewWriter(w),
-		m:              m,
 		headerTemplate: headerTemplate,
 		umask:          umask,
 	}
@@ -54,7 +52,12 @@ func (m *TARMutator) Close() error {
 
 // IdempotentCmdOutput implements Mutator.IdempotentCmdOutput.
 func (m *TARMutator) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
-	return m.m.IdempotentCmdOutput(cmd)
+	return cmd.Output()
+}
+
+// Lstat implements Mutator.Lstat.
+func (m *TARMutator) Lstat(name string) (os.FileInfo, error) {
+	return nil, os.ErrNotExist
 }
 
 // Mkdir implements Mutator.Mkdir.
@@ -68,26 +71,27 @@ func (m *TARMutator) Mkdir(name string, perm os.FileMode) error {
 
 // ReadDir implements Mutator.ReadDir.
 func (m *TARMutator) ReadDir(dirname string) ([]os.FileInfo, error) {
-	return nil, &invalidTAROperationError{
-		operation: "ReadDir",
-		args:      []interface{}{dirname},
-	}
+	return nil, os.ErrNotExist
+}
+
+// ReadFile implements Mutator.ReadFile.
+func (m *TARMutator) ReadFile(filename string) ([]byte, error) {
+	return nil, os.ErrNotExist
+}
+
+// Readlink implements Mutator.Readlink.
+func (m *TARMutator) Readlink(name string) (string, error) {
+	return "", os.ErrNotExist
 }
 
 // RemoveAll implements Mutator.RemoveAll.
 func (m *TARMutator) RemoveAll(name string) error {
-	return &invalidTAROperationError{
-		operation: "RemoveAll",
-		args:      []interface{}{name},
-	}
+	return nil
 }
 
 // Rename implements Mutator.Rename.
 func (m *TARMutator) Rename(oldpath, newpath string) error {
-	return &invalidTAROperationError{
-		operation: "Rename",
-		args:      []interface{}{oldpath, newpath},
-	}
+	return os.ErrNotExist
 }
 
 // RunCmd implements Mutator.RunCmd.
@@ -119,8 +123,8 @@ func (m *TARMutator) WriteFile(filename string, data []byte, perm os.FileMode, c
 func (m *TARMutator) WriteSymlink(oldname, newname string) error {
 	header := m.headerTemplate
 	header.Typeflag = tar.TypeSymlink
-	header.Name = oldname
-	header.Linkname = newname
+	header.Name = newname
+	header.Linkname = oldname
 	return m.w.WriteHeader(&header)
 }
 
