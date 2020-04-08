@@ -2,7 +2,10 @@ package chezmoi
 
 import (
 	"bytes"
+	"io/ioutil"
 	"os"
+	"os/exec"
+	"path"
 )
 
 // A TargetStateEntry represents the state of an entry in the target state.
@@ -22,6 +25,13 @@ type TargetStateDir struct {
 // A TargetStateFile represents the state of a file in the target state.
 type TargetStateFile struct {
 	perm os.FileMode
+	*LazyContents
+}
+
+// A TargetStateScript represents the state of a script.
+// FIXME maybe scripts should be handled specially
+type TargetStateScript struct {
+	name string
 	*LazyContents
 }
 
@@ -52,7 +62,7 @@ func (t *TargetStateDir) Apply(mutator Mutator, destStateEntry DestStateEntry) e
 		}
 		return mutator.Chmod(destStateDir.Path(), t.perm)
 	}
-	if err := destStateEntry.Remove(); err != nil {
+	if err := destStateEntry.Remove(mutator); err != nil {
 		return err
 	}
 	return mutator.Mkdir(destStateEntry.Path(), t.perm)
@@ -135,6 +145,70 @@ func (t *TargetStateFile) Equal(destStateEntry DestStateEntry) (bool, error) {
 		return false, err
 	}
 	return bytes.Equal(destContentsSHA256, contentsSHA256), nil
+}
+
+// Apply does nothing for scripts.
+// FIXME maybe this should call Run?
+func (t *TargetStateScript) Apply(mutator Mutator, destStateEntry DestStateEntry) error {
+	return nil
+}
+
+// Equal returns true if destStateEntry matches t.
+func (t *TargetStateScript) Equal(destStateEntry DestStateEntry) (bool, error) {
+	// Scripts are independent of the destination state.
+	// FIXME maybe the destination state should store the sha256 sums of executed scripts
+	return true, nil
+}
+
+// Run runs t.
+func (t *TargetStateScript) Run(mutator Mutator) error {
+	contents, err := t.Contents()
+	if err != nil {
+		return err
+	}
+	if len(bytes.TrimSpace(contents)) == 0 {
+		// Don't execute empty scripts.
+		return nil
+	}
+
+	// FIXME once_
+	// FIXME verbose and dry run -- maybe handled by mutator?
+
+	// Write the temporary script file. Put the randomness at the front of the
+	// filename to preserve any file extension for Windows scripts.
+	f, err := ioutil.TempFile("", "*."+path.Base(t.name))
+	if err != nil {
+		return err
+	}
+	defer func() {
+		_ = os.RemoveAll(f.Name())
+	}()
+
+	// Make the script private before writing it in case it contains any
+	// secrets.
+	if err := f.Chmod(0o700); err != nil {
+		return err
+	}
+	if _, err := f.Write(contents); err != nil {
+		return err
+	}
+	if err := f.Close(); err != nil {
+		return err
+	}
+
+	// Run the temporary script file.
+	c := exec.Command(f.Name())
+	// c.Dir = path.Join(applyOptions.DestDir, filepath.Dir(s.targetName)) // FIXME
+	c.Stdin = os.Stdin
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	if err := mutator.RunCmd(c); err != nil { // FIXME
+		return err
+	}
+
+	// FIXME record run if once_
+
+	return nil
 }
 
 // Apply updates destStateEntry to match t.

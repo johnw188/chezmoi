@@ -67,7 +67,14 @@ func (s *SourceStateFile) TargetStateEntry() TargetStateEntry {
 			},
 		}
 	case SourceFileTypeScript:
-		panic("scripts unsupported") // FIXME
+		return &TargetStateScript{
+			name: s.attributes.Name,
+			LazyContents: &LazyContents{
+				contentsFunc: func() ([]byte, error) {
+					return s.fs.ReadFile(s.path)
+				},
+			},
+		}
 	case SourceFileTypeSymlink:
 		return &TargetStateSymlink{
 			LazyLinkname: &LazyLinkname{
