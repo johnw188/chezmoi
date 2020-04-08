@@ -1,6 +1,6 @@
 package chezmoi
 
-// FIXME UmaskMutator and add PermEqual method?
+// FIXME UmaskdestDir and add PermEqual method?
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 
 // A TargetStateEntry represents the state of an entry in the target state.
 type TargetStateEntry interface {
-	Apply(mutator DestDir, destStateEntry DestStateEntry) error
+	Apply(destDir DestDir, destStateEntry DestStateEntry) error
 	Equal(destStateEntry DestStateEntry) (bool, error)
 	Evaluate() error
 }
@@ -45,11 +45,11 @@ type TargetStateSymlink struct {
 }
 
 // Apply updates destStateEntry to match t.
-func (t *TargetStateAbsent) Apply(mutator DestDir, destStateEntry DestStateEntry) error {
+func (t *TargetStateAbsent) Apply(destDir DestDir, destStateEntry DestStateEntry) error {
 	if _, ok := destStateEntry.(*DestStateAbsent); ok {
 		return nil
 	}
-	return mutator.RemoveAll(destStateEntry.Path())
+	return destDir.RemoveAll(destStateEntry.Path())
 }
 
 // Equal returns true if destStateEntry matches t.
@@ -64,17 +64,17 @@ func (t *TargetStateAbsent) Evaluate() error {
 }
 
 // Apply updates destStateEntry to match t. It does not recurse.
-func (t *TargetStateDir) Apply(mutator DestDir, destStateEntry DestStateEntry) error {
+func (t *TargetStateDir) Apply(destDir DestDir, destStateEntry DestStateEntry) error {
 	if destStateDir, ok := destStateEntry.(*DestStateDir); ok {
 		if destStateDir.perm == t.perm {
 			return nil
 		}
-		return mutator.Chmod(destStateDir.Path(), t.perm)
+		return destDir.Chmod(destStateDir.Path(), t.perm)
 	}
-	if err := destStateEntry.Remove(mutator); err != nil {
+	if err := destStateEntry.Remove(destDir); err != nil {
 		return err
 	}
-	return mutator.Mkdir(destStateEntry.Path(), t.perm)
+	return destDir.Mkdir(destStateEntry.Path(), t.perm)
 }
 
 // Equal returns true if destStateEntry matches t. It does not recurse.
@@ -92,7 +92,7 @@ func (t *TargetStateDir) Evaluate() error {
 }
 
 // Apply updates destStateEntry to match t.
-func (t *TargetStateFile) Apply(mutator DestDir, destStateEntry DestStateEntry) error {
+func (t *TargetStateFile) Apply(destDir DestDir, destStateEntry DestStateEntry) error {
 	var destContents []byte
 	destIsFileAndPermMatches := false
 	if destStateFile, ok := destStateEntry.(*DestStateFile); ok {
@@ -111,7 +111,7 @@ func (t *TargetStateFile) Apply(mutator DestDir, destStateEntry DestStateEntry) 
 			if destStateFile.perm == t.perm {
 				return nil
 			}
-			return mutator.Chmod(destStateFile.Path(), t.perm)
+			return destDir.Chmod(destStateFile.Path(), t.perm)
 		}
 		destContents, err = destStateFile.Contents()
 		if err != nil {
@@ -124,21 +124,21 @@ func (t *TargetStateFile) Apply(mutator DestDir, destStateEntry DestStateEntry) 
 		return err
 	}
 	// If the destination entry is a file and its permissions match the target
-	// state then we can rely on mutator.WriteFile to replace the file, possibly
+	// state then we can rely on destDir.WriteFile to replace the file, possibly
 	// atomically. Otherwise we must remove the destination entry before writing
 	// the new file. If the destination entry is not a file then it must be
-	// removed as mutator.WriteFile will not overwrite non-files. If the
+	// removed as destDir.WriteFile will not overwrite non-files. If the
 	// destination entry is a file but the permissions do not matchq then we
 	// must remove the file first because there is no way atomically update the
 	// permissions and the content simultaneously.
 	//
-	// FIXME update Mutator.WriteFile to truncate, update perms, then write content
+	// FIXME update destDir.WriteFile to truncate, update perms, then write content
 	if !destIsFileAndPermMatches {
-		if err := destStateEntry.Remove(mutator); err != nil {
+		if err := destStateEntry.Remove(destDir); err != nil {
 			return err
 		}
 	}
-	return mutator.WriteFile(destStateEntry.Path(), contents, t.perm, destContents)
+	return destDir.WriteFile(destStateEntry.Path(), contents, t.perm, destContents)
 }
 
 // Equal returns true if destStateEntry matches t.
@@ -169,7 +169,7 @@ func (t *TargetStateFile) Evaluate() error {
 
 // Apply does nothing for scripts.
 // FIXME maybe this should call Run?
-func (t *TargetStateScript) Apply(mutator DestDir, destStateEntry DestStateEntry) error {
+func (t *TargetStateScript) Apply(destDir DestDir, destStateEntry DestStateEntry) error {
 	return nil
 }
 
@@ -187,7 +187,7 @@ func (t *TargetStateScript) Evaluate() error {
 }
 
 // Run runs t.
-func (t *TargetStateScript) Run(mutator DestDir) error {
+func (t *TargetStateScript) Run(destDir DestDir) error {
 	contents, err := t.Contents()
 	if err != nil {
 		return err
@@ -198,7 +198,7 @@ func (t *TargetStateScript) Run(mutator DestDir) error {
 	}
 
 	// FIXME once_
-	// FIXME verbose and dry run -- maybe handled by mutator?
+	// FIXME verbose and dry run -- maybe handled by destDir?
 
 	// Write the temporary script file. Put the randomness at the front of the
 	// filename to preserve any file extension for Windows scripts.
@@ -229,7 +229,7 @@ func (t *TargetStateScript) Run(mutator DestDir) error {
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
-	if err := mutator.RunCmd(c); err != nil { // FIXME
+	if err := destDir.RunCmd(c); err != nil { // FIXME
 		return err
 	}
 
@@ -239,7 +239,7 @@ func (t *TargetStateScript) Run(mutator DestDir) error {
 }
 
 // Apply updates destStateEntry to match t.
-func (t *TargetStateSymlink) Apply(mutator DestDir, destStateEntry DestStateEntry) error {
+func (t *TargetStateSymlink) Apply(destDir DestDir, destStateEntry DestStateEntry) error {
 	if destStateSymlink, ok := destStateEntry.(*DestStateSymlink); ok {
 		destLinkname, err := destStateSymlink.Linkname()
 		if err != nil {
@@ -257,10 +257,10 @@ func (t *TargetStateSymlink) Apply(mutator DestDir, destStateEntry DestStateEntr
 	if err != nil {
 		return err
 	}
-	if err := destStateEntry.Remove(mutator); err != nil {
+	if err := destStateEntry.Remove(destDir); err != nil {
 		return err
 	}
-	return mutator.WriteSymlink(linkname, destStateEntry.Path())
+	return destDir.WriteSymlink(linkname, destStateEntry.Path())
 }
 
 // Equal returns true if destStateEntry matches t.

@@ -1,6 +1,5 @@
 package chezmoi
 
-// FIXME rename Mutator to DestDir
 import (
 	"os"
 	"os/exec"

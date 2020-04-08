@@ -68,20 +68,20 @@ func NewSourceState(options ...SourceStateOption) *SourceState {
 	return s
 }
 
-// ApplyAll updates targetDir in fs to match s using mutator. FIXME comment
-func (s *SourceState) ApplyAll(mutator DestDir, umask os.FileMode, targetDir string) error {
+// ApplyAll updates targetDir in fs to match s using destDir. FIXME comment
+func (s *SourceState) ApplyAll(destDir DestDir, umask os.FileMode, targetDir string) error {
 	for _, targetName := range s.sortedTargetNames() {
-		if err := s.ApplyOne(mutator, umask, targetDir, targetName); err != nil {
+		if err := s.ApplyOne(destDir, umask, targetDir, targetName); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// ApplyOne updates targetName in targetDir on fs to match s using mutator. FIXME comment
-func (s *SourceState) ApplyOne(mutator DestDir, umask os.FileMode, targetDir, targetName string) error {
+// ApplyOne updates targetName in targetDir on fs to match s using destDir. FIXME comment
+func (s *SourceState) ApplyOne(destDir DestDir, umask os.FileMode, targetDir, targetName string) error {
 	targetPath := path.Join(targetDir, targetName)
-	destStateEntry, err := NewDestStateEntry(mutator, targetPath)
+	destStateEntry, err := NewDestStateEntry(destDir, targetPath)
 	if err != nil {
 		return err
 	}
@@ -89,12 +89,12 @@ func (s *SourceState) ApplyOne(mutator DestDir, umask os.FileMode, targetDir, ta
 	if err != nil {
 		return err
 	}
-	if err := targetStateEntry.Apply(mutator, destStateEntry); err != nil {
+	if err := targetStateEntry.Apply(destDir, destStateEntry); err != nil {
 		return err
 	}
 	if targetStateDir, ok := targetStateEntry.(*TargetStateDir); ok {
 		if targetStateDir.exact {
-			infos, err := mutator.ReadDir(targetPath)
+			infos, err := destDir.ReadDir(targetPath)
 			if err != nil {
 				return err
 			}
@@ -107,7 +107,7 @@ func (s *SourceState) ApplyOne(mutator DestDir, umask os.FileMode, targetDir, ta
 			sort.Strings(baseNames)
 			for _, baseName := range baseNames {
 				if _, ok := s.entries[path.Join(targetName, baseName)]; !ok {
-					if err := mutator.RemoveAll(path.Join(targetPath, baseName)); err != nil {
+					if err := destDir.RemoveAll(path.Join(targetPath, baseName)); err != nil {
 						return err
 					}
 				}
@@ -235,7 +235,7 @@ func (s *SourceState) Read(fs vfs.FS, sourceDir string) error {
 }
 
 // Remove removes everything in targetDir that matches s's remove pattern set.
-func (s *SourceState) Remove(fs vfs.FS, mutator DestDir, umask os.FileMode, targetDir string) error {
+func (s *SourceState) Remove(fs vfs.FS, destDir DestDir, umask os.FileMode, targetDir string) error {
 	// Build a set of targets to remove.
 	targetDirPrefix := targetDir + pathSeparator
 	targetPathsToRemove := NewStringSet()
@@ -256,7 +256,7 @@ func (s *SourceState) Remove(fs vfs.FS, mutator DestDir, umask os.FileMode, targ
 	sortedTargetPathsToRemove := targetPathsToRemove.Elements()
 	sort.Strings(sortedTargetPathsToRemove)
 	for _, targetPath := range sortedTargetPathsToRemove {
-		if err := mutator.RemoveAll(targetPath); err != nil {
+		if err := destDir.RemoveAll(targetPath); err != nil {
 			return err
 		}
 	}
