@@ -26,6 +26,17 @@ func (d *DebugDestDir) Chmod(name string, mode os.FileMode) error {
 	})
 }
 
+// Glob implements DestDir.Glob.
+func (d *DebugDestDir) Glob(name string) ([]string, error) {
+	var matches []string
+	err := Debugf("Glob(%q)", []interface{}{name}, func() error {
+		var err error
+		matches, err = d.d.Glob(name)
+		return err
+	})
+	return matches, err
+}
+
 // IdempotentCmdOutput implements DestDir.IdempotentCmdOutput.
 func (d *DebugDestDir) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
 	var output []byte

@@ -240,7 +240,7 @@ func (s *SourceState) Remove(destDir DestDir, umask os.FileMode, targetDir strin
 	targetDirPrefix := targetDir + pathSeparator
 	targetPathsToRemove := NewStringSet()
 	for include := range s.remove.includes {
-		matches, err := fs.Glob(path.Join(targetDir, include))
+		matches, err := destDir.Glob(path.Join(targetDir, include))
 		if err != nil {
 			return err
 		}

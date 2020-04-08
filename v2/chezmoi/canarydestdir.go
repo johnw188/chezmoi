@@ -26,6 +26,11 @@ func (d *CanaryDestDir) Chmod(name string, mode os.FileMode) error {
 	return d.d.Chmod(name, mode)
 }
 
+// Glob implements DestDir.Glob.
+func (d *CanaryDestDir) Glob(pattern string) ([]string, error) {
+	return d.d.Glob(pattern)
+}
+
 // IdempotentCmdOutput implements DestDir.IdempotentCmdOutput.
 func (d *CanaryDestDir) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
 	return d.d.IdempotentCmdOutput(cmd)

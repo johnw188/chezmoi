@@ -7,6 +7,7 @@ import (
 
 // A DestDirReader reads from a destination directory.
 type DestDirReader interface {
+	Glob(pattern string) ([]string, error)
 	Lstat(filename string) (os.FileInfo, error)
 	ReadDir(dirname string) ([]os.FileInfo, error)
 	ReadFile(filename string) ([]byte, error)

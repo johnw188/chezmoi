@@ -23,6 +23,11 @@ func (d *DryRunDestDir) Chmod(name string, mode os.FileMode) error {
 	return nil
 }
 
+// Glob implements DestDir.Glob.
+func (d *DryRunDestDir) Glob(pattern string) ([]string, error) {
+	return d.d.Glob(pattern)
+}
+
 // IdempotentCmdOutput implements DestDir.IdempotentCmdOutput.
 func (d *DryRunDestDir) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
 	return d.d.IdempotentCmdOutput(cmd)

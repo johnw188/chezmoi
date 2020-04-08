@@ -36,6 +36,11 @@ func (d *TARDestDir) Close() error {
 	return d.w.Close()
 }
 
+// Glob implements DestDir.Glob.
+func (d *TARDestDir) Glob(pattern string) ([]string, error) {
+	return nil, nil
+}
+
 // IdempotentCmdOutput implements DestDir.IdempotentCmdOutput.
 func (d *TARDestDir) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
 	return cmd.Output()

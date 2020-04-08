@@ -46,6 +46,11 @@ func (d *VerboseDestDir) Chmod(name string, mode os.FileMode) error {
 	return err
 }
 
+// Glob implements DestDir.Glob.
+func (d *VerboseDestDir) Glob(pattern string) ([]string, error) {
+	return d.d.Glob(pattern)
+}
+
 // IdempotentCmdOutput implements DestDir.IdempotentCmdOutput.
 func (d *VerboseDestDir) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
 	action := cmdString(cmd)
