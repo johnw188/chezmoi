@@ -1,6 +1,5 @@
 package chezmoi
 
-// FIXME IAMHERE add umask to Apply and Equal
 // FIXME UmaskMutator and add PermEqual method?
 
 import (

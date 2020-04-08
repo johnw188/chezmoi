@@ -9,7 +9,7 @@ import (
 // A SourceStateEntry represents the state of an entry in the source state.
 type SourceStateEntry interface {
 	Path() string
-	TargetStateEntry() TargetStateEntry
+	TargetStateEntry(umask os.FileMode) TargetStateEntry
 }
 
 // A SourceStateDir represents the state of a directory in the source state.
@@ -32,13 +32,13 @@ func (s *SourceStateDir) Path() string {
 }
 
 // TargetStateEntry returns s's target state entry.
-func (s *SourceStateDir) TargetStateEntry() TargetStateEntry {
+func (s *SourceStateDir) TargetStateEntry(umask os.FileMode) TargetStateEntry {
 	perm := os.FileMode(0o777)
 	if s.attributes.Private {
 		perm &^= 0o77
 	}
 	return &TargetStateDir{
-		perm:  perm,
+		perm:  perm &^ umask,
 		exact: s.attributes.Exact,
 	}
 }
@@ -49,7 +49,7 @@ func (s *SourceStateFile) Path() string {
 }
 
 // TargetStateEntry returns s's target state entry.
-func (s *SourceStateFile) TargetStateEntry() TargetStateEntry {
+func (s *SourceStateFile) TargetStateEntry(umask os.FileMode) TargetStateEntry {
 	switch s.attributes.Type {
 	case SourceFileTypeFile:
 		perm := os.FileMode(0o666)
@@ -60,7 +60,7 @@ func (s *SourceStateFile) TargetStateEntry() TargetStateEntry {
 			perm &^= 0o77
 		}
 		return &TargetStateFile{
-			perm: perm,
+			perm: perm &^ umask,
 			lazyContents: &lazyContents{
 				contentsFunc: func() ([]byte, error) {
 					return s.fs.ReadFile(s.path)
@@ -80,7 +80,11 @@ func (s *SourceStateFile) TargetStateEntry() TargetStateEntry {
 		return &TargetStateSymlink{
 			lazyLinkname: &lazyLinkname{
 				linknameFunc: func() (string, error) {
-					return s.fs.Readlink(s.path)
+					linknameBytes, err := s.fs.ReadFile(s.path)
+					if err != nil {
+						return "", err
+					}
+					return string(linknameBytes), nil
 				},
 			},
 		}

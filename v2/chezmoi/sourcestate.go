@@ -85,7 +85,7 @@ func (s *SourceState) ApplyOne(fs vfs.FS, mutator Mutator, umask os.FileMode, ta
 	if err != nil {
 		return err
 	}
-	targetStateEntry := s.entries[targetName].TargetStateEntry()
+	targetStateEntry := s.entries[targetName].TargetStateEntry(umask)
 	if err != nil {
 		return err
 	}
@@ -179,11 +179,12 @@ func (s *SourceState) Read(fs vfs.FS, sourceDir string) error {
 				return filepath.SkipDir
 			}
 			return nil
-		case s.ignore.Match(relPath):
-			return nil
 		case info.IsDir():
 			dirAttributes := ParseDirAttributes(sourceName)
 			targetName := path.Join(targetDirName, dirAttributes.Name)
+			if s.ignore.Match(targetName) {
+				return nil
+			}
 			if sourceStateEntry, ok := s.entries[targetName]; ok {
 				return &duplicateTargetError{
 					targetName: targetName,
@@ -201,6 +202,9 @@ func (s *SourceState) Read(fs vfs.FS, sourceDir string) error {
 		case info.Mode().IsRegular():
 			fileAttributes := ParseFileAttributes(sourceName)
 			targetName := path.Join(targetDirName, fileAttributes.Name)
+			if s.ignore.Match(targetName) {
+				return nil
+			}
 			if sourceStateEntry, ok := s.entries[targetName]; ok {
 				return &duplicateTargetError{
 					targetName: targetName,
@@ -211,6 +215,7 @@ func (s *SourceState) Read(fs vfs.FS, sourceDir string) error {
 				}
 			}
 			s.entries[targetName] = &SourceStateFile{
+				fs:         fs,
 				path:       sourcePath,
 				attributes: fileAttributes,
 				lazyContents: &lazyContents{
@@ -260,9 +265,9 @@ func (s *SourceState) Remove(fs vfs.FS, mutator Mutator, umask os.FileMode, targ
 }
 
 // Evaluate evaluates every target state entry in s.
-func (s *SourceState) Evaluate() error {
+func (s *SourceState) Evaluate(umask os.FileMode) error {
 	for _, targetName := range s.sortedTargetNames() {
-		if err := s.entries[targetName].TargetStateEntry().Evaluate(); err != nil {
+		if err := s.entries[targetName].TargetStateEntry(umask).Evaluate(); err != nil {
 			return err
 		}
 	}
