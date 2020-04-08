@@ -76,14 +76,10 @@ func (m *TARMutator) ReadDir(dirname string) ([]os.FileInfo, error) {
 
 // RemoveAll implements Mutator.RemoveAll.
 func (m *TARMutator) RemoveAll(name string) error {
-	return nil
-	// FIXME should this be the following?
-	/*
-		return &invalidTAROperationError{
-			operation: "RemoveAll",
-			args:      []interface{}{name},
-		}
-	*/
+	return &invalidTAROperationError{
+		operation: "RemoveAll",
+		args:      []interface{}{name},
+	}
 }
 
 // Rename implements Mutator.Rename.

@@ -117,7 +117,6 @@ func TestSourceStateApplyAll(t *testing.T) {
 }
 
 func TestSourceStateArchive(t *testing.T) {
-	t.Skip() // FIXME
 	fs, cleanup, err := vfst.NewTestFS(map[string]interface{}{
 		"/home/user/.local/share/chezmoi": map[string]interface{}{
 			".chezmoiignore":  "README.md\n",
