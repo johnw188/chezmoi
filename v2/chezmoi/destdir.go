@@ -1,5 +1,7 @@
 package chezmoi
 
+// FIXME do we need Stat?
+
 import (
 	"os"
 	"os/exec"
