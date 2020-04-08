@@ -49,9 +49,9 @@ func (t *TargetStateAbsent) Apply(mutator Mutator, destStateEntry DestStateEntry
 }
 
 // Equal returns true if destStateEntry matches t.
-func (t *TargetStateAbsent) Equal(destStateEntry DestStateEntry) bool {
+func (t *TargetStateAbsent) Equal(destStateEntry DestStateEntry) (bool, error) {
 	_, ok := destStateEntry.(*DestStateAbsent)
-	return ok
+	return ok, nil
 }
 
 // Apply updates destStateEntry to match t. It does not recurse.

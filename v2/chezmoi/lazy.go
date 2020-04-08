@@ -19,6 +19,9 @@ type LazyLinkname struct {
 
 // Contents returns e's contents.
 func (lc *LazyContents) Contents() ([]byte, error) {
+	if lc == nil {
+		return nil, nil
+	}
 	if lc.contentsFunc != nil {
 		lc.contents, lc.contentsErr = lc.contentsFunc()
 		lc.contentsFunc = nil
@@ -31,6 +34,9 @@ func (lc *LazyContents) Contents() ([]byte, error) {
 
 // ContentsSHA256 returns the SHA256 sum of f's contents.
 func (lc *LazyContents) ContentsSHA256() ([]byte, error) {
+	if lc == nil {
+		return sha256Sum(nil), nil
+	}
 	if lc.contentsSHA256 == nil {
 		if _, err := lc.Contents(); err != nil {
 			return nil, err
@@ -42,6 +48,9 @@ func (lc *LazyContents) ContentsSHA256() ([]byte, error) {
 
 // Linkname returns s's linkname.
 func (ll *LazyLinkname) Linkname() (string, error) {
+	if ll == nil {
+		return "", nil
+	}
 	if ll.linknameFunc != nil {
 		ll.linkname, ll.linknameErr = ll.linknameFunc()
 	}
