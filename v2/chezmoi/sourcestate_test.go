@@ -140,10 +140,8 @@ func TestSourceStateArchive(t *testing.T) {
 	require.NoError(t, s.Evaluate(vfst.DefaultUmask))
 
 	b := &bytes.Buffer{}
-	var mutator DestDir = NewTARDestDir(b, tar.Header{}, vfst.DefaultUmask)
-	// mutator = NewVerboseMutator(os.Stderr, mutator, false, 1024)
-	mutator = NewDebugDestDir(mutator)
-	require.NoError(t, s.ApplyAll(mutator, vfst.DefaultUmask, ""))
+	destDir := NewTARDestDir(b, tar.Header{}, vfst.DefaultUmask)
+	require.NoError(t, s.ApplyAll(destDir, vfst.DefaultUmask, ""))
 
 	r := tar.NewReader(b)
 	for _, tc := range []struct {

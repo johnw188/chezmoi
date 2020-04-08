@@ -21,7 +21,7 @@ func NewDebugDestDir(d DestDir) *DebugDestDir {
 
 // Chmod implements DestDir.Chmod.
 func (d *DebugDestDir) Chmod(name string, mode os.FileMode) error {
-	return Debugf("Chmod(%q, 0%o)", []interface{}{name, mode}, func() error {
+	return Debugf("Chmod(%q, 0o%o)", []interface{}{name, mode}, func() error {
 		return d.d.Chmod(name, mode)
 	})
 }
@@ -51,7 +51,7 @@ func (d *DebugDestDir) Lstat(name string) (os.FileInfo, error) {
 
 // Mkdir implements DestDir.Mkdir.
 func (d *DebugDestDir) Mkdir(name string, perm os.FileMode) error {
-	return Debugf("Mkdir(%q, 0%o)", []interface{}{name, perm}, func() error {
+	return Debugf("Mkdir(%q, 0o%o)", []interface{}{name, perm}, func() error {
 		return d.d.Mkdir(name, perm)
 	})
 }
