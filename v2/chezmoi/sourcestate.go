@@ -235,7 +235,7 @@ func (s *SourceState) Read(fs vfs.FS, sourceDir string) error {
 }
 
 // Remove removes everything in targetDir that matches s's remove pattern set.
-func (s *SourceState) Remove(fs vfs.FS, destDir DestDir, umask os.FileMode, targetDir string) error {
+func (s *SourceState) Remove(destDir DestDir, umask os.FileMode, targetDir string) error {
 	// Build a set of targets to remove.
 	targetDirPrefix := targetDir + pathSeparator
 	targetPathsToRemove := NewStringSet()

@@ -594,7 +594,7 @@ func TestSourceStateRemove(t *testing.T) {
 			require.NoError(t, s.Read(fs, "/home/user/.local/share/chezmoi"))
 			require.NoError(t, s.Evaluate(vfst.DefaultUmask))
 
-			require.NoError(t, s.Remove(fs, NewFSDestDir(fs), vfst.DefaultUmask, "/home/user"))
+			require.NoError(t, s.Remove(NewFSDestDir(fs), vfst.DefaultUmask, "/home/user"))
 
 			vfst.RunTests(t, fs, "", tc.tests)
 		})
