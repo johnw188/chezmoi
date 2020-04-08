@@ -12,6 +12,7 @@ import (
 type TargetStateEntry interface {
 	Apply(mutator Mutator, destStateEntry DestStateEntry) error
 	Equal(destStateEntry DestStateEntry) (bool, error)
+	Evaluate() error
 }
 
 // A TargetStateAbsent represents the absence of an entry in the target state.
@@ -19,7 +20,8 @@ type TargetStateAbsent struct{}
 
 // A TargetStateDir represents the state of a directory in the target state.
 type TargetStateDir struct {
-	perm os.FileMode
+	perm  os.FileMode
+	exact bool
 }
 
 // A TargetStateFile represents the state of a file in the target state.
@@ -54,6 +56,11 @@ func (t *TargetStateAbsent) Equal(destStateEntry DestStateEntry) (bool, error) {
 	return ok, nil
 }
 
+// Evaluate evaluates t.
+func (t *TargetStateAbsent) Evaluate() error {
+	return nil
+}
+
 // Apply updates destStateEntry to match t. It does not recurse.
 func (t *TargetStateDir) Apply(mutator Mutator, destStateEntry DestStateEntry) error {
 	if destStateDir, ok := destStateEntry.(*DestStateDir); ok {
@@ -75,6 +82,11 @@ func (t *TargetStateDir) Equal(destStateEntry DestStateEntry) (bool, error) {
 		return false, nil
 	}
 	return destStateDir.perm == t.perm, nil
+}
+
+// Evaluate evaluates t.
+func (t *TargetStateDir) Evaluate() error {
+	return nil
 }
 
 // Apply updates destStateEntry to match t.
@@ -147,6 +159,12 @@ func (t *TargetStateFile) Equal(destStateEntry DestStateEntry) (bool, error) {
 	return bytes.Equal(destContentsSHA256, contentsSHA256), nil
 }
 
+// Evaluate evaluates t.
+func (t *TargetStateFile) Evaluate() error {
+	_, err := t.ContentsSHA256()
+	return err
+}
+
 // Apply does nothing for scripts.
 // FIXME maybe this should call Run?
 func (t *TargetStateScript) Apply(mutator Mutator, destStateEntry DestStateEntry) error {
@@ -158,6 +176,12 @@ func (t *TargetStateScript) Equal(destStateEntry DestStateEntry) (bool, error) {
 	// Scripts are independent of the destination state.
 	// FIXME maybe the destination state should store the sha256 sums of executed scripts
 	return true, nil
+}
+
+// Evaluate evaluates t.
+func (t *TargetStateScript) Evaluate() error {
+	_, err := t.ContentsSHA256()
+	return err
 }
 
 // Run runs t.
@@ -252,4 +276,10 @@ func (t *TargetStateSymlink) Equal(destStateEntry DestStateEntry) (bool, error) 
 		return false, nil
 	}
 	return destLinkname == linkname, nil
+}
+
+// Evaluate evaluates t.
+func (t *TargetStateSymlink) Evaluate() error {
+	_, err := t.Linkname()
+	return err
 }

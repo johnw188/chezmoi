@@ -38,7 +38,8 @@ func (s *SourceStateDir) TargetStateEntry() TargetStateEntry {
 		perm &^= 0o77
 	}
 	return &TargetStateDir{
-		perm: perm,
+		perm:  perm,
+		exact: s.attributes.Exact,
 	}
 }
 
