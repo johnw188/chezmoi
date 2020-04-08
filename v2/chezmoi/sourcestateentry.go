@@ -23,7 +23,7 @@ type SourceStateFile struct {
 	fs         vfs.FS
 	path       string
 	attributes FileAttributes
-	*LazyContents
+	*lazyContents
 }
 
 // Path returns s's path.
@@ -60,7 +60,7 @@ func (s *SourceStateFile) TargetStateEntry() TargetStateEntry {
 		}
 		return &TargetStateFile{
 			perm: perm,
-			LazyContents: &LazyContents{
+			lazyContents: &lazyContents{
 				contentsFunc: func() ([]byte, error) {
 					return s.fs.ReadFile(s.path)
 				},
@@ -69,7 +69,7 @@ func (s *SourceStateFile) TargetStateEntry() TargetStateEntry {
 	case SourceFileTypeScript:
 		return &TargetStateScript{
 			name: s.attributes.Name,
-			LazyContents: &LazyContents{
+			lazyContents: &lazyContents{
 				contentsFunc: func() ([]byte, error) {
 					return s.fs.ReadFile(s.path)
 				},
@@ -77,7 +77,7 @@ func (s *SourceStateFile) TargetStateEntry() TargetStateEntry {
 		}
 	case SourceFileTypeSymlink:
 		return &TargetStateSymlink{
-			LazyLinkname: &LazyLinkname{
+			lazyLinkname: &lazyLinkname{
 				linknameFunc: func() (string, error) {
 					return s.fs.Readlink(s.path)
 				},

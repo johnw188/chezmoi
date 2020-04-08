@@ -27,7 +27,7 @@ func TestTargetStateEntryApplyAndEqual(t *testing.T) {
 			name: "file",
 			targetStateEntry: &TargetStateFile{
 				perm: 0o644,
-				LazyContents: &LazyContents{
+				lazyContents: &lazyContents{
 					contents: []byte("bar"),
 				},
 			},
@@ -47,7 +47,7 @@ func TestTargetStateEntryApplyAndEqual(t *testing.T) {
 		{
 			name: "symlink",
 			targetStateEntry: &TargetStateSymlink{
-				LazyLinkname: &LazyLinkname{
+				lazyLinkname: &lazyLinkname{
 					linkname: "bar",
 				},
 			},

@@ -2,23 +2,23 @@ package chezmoi
 
 import "crypto/sha256"
 
-// A LazyContents evaluates its contents lazily.
-type LazyContents struct {
+// A lazyContents evaluates its contents lazily.
+type lazyContents struct {
 	contentsFunc   func() ([]byte, error)
 	contents       []byte
 	contentsErr    error
 	contentsSHA256 []byte
 }
 
-// A LazyLinkname evaluates its linkname lazily.
-type LazyLinkname struct {
+// A lazyLinkname evaluates its linkname lazily.
+type lazyLinkname struct {
 	linknameFunc func() (string, error)
 	linkname     string
 	linknameErr  error
 }
 
 // Contents returns e's contents.
-func (lc *LazyContents) Contents() ([]byte, error) {
+func (lc *lazyContents) Contents() ([]byte, error) {
 	if lc == nil {
 		return nil, nil
 	}
@@ -33,7 +33,7 @@ func (lc *LazyContents) Contents() ([]byte, error) {
 }
 
 // ContentsSHA256 returns the SHA256 sum of f's contents.
-func (lc *LazyContents) ContentsSHA256() ([]byte, error) {
+func (lc *lazyContents) ContentsSHA256() ([]byte, error) {
 	if lc == nil {
 		return sha256Sum(nil), nil
 	}
@@ -47,7 +47,7 @@ func (lc *LazyContents) ContentsSHA256() ([]byte, error) {
 }
 
 // Linkname returns s's linkname.
-func (ll *LazyLinkname) Linkname() (string, error) {
+func (ll *lazyLinkname) Linkname() (string, error) {
 	if ll == nil {
 		return "", nil
 	}

@@ -30,13 +30,13 @@ type DestStateDir struct {
 type DestStateFile struct {
 	path string
 	perm os.FileMode
-	*LazyContents
+	*lazyContents
 }
 
 // A DestStateSymlink represents the state of a symlink in the destination state.
 type DestStateSymlink struct {
 	path string
-	*LazyLinkname
+	*lazyLinkname
 }
 
 // NewDestStateEntry returns a new DestStateEntry populated with path from fs.
@@ -55,7 +55,7 @@ func NewDestStateEntry(fs vfs.FS, path string) (DestStateEntry, error) {
 		return &DestStateFile{
 			path: path,
 			perm: info.Mode() & os.ModePerm,
-			LazyContents: &LazyContents{
+			lazyContents: &lazyContents{
 				contentsFunc: func() ([]byte, error) {
 					return fs.ReadFile(path)
 				},
@@ -69,7 +69,7 @@ func NewDestStateEntry(fs vfs.FS, path string) (DestStateEntry, error) {
 	case os.ModeSymlink:
 		return &DestStateSymlink{
 			path: path,
-			LazyLinkname: &LazyLinkname{
+			lazyLinkname: &lazyLinkname{
 				linknameFunc: func() (string, error) {
 					return fs.Readlink(path)
 				},

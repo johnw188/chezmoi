@@ -25,19 +25,19 @@ type TargetStateDir struct {
 // A TargetStateFile represents the state of a file in the target state.
 type TargetStateFile struct {
 	perm os.FileMode
-	*LazyContents
+	*lazyContents
 }
 
 // A TargetStateScript represents the state of a script.
 // FIXME maybe scripts should be handled specially
 type TargetStateScript struct {
 	name string
-	*LazyContents
+	*lazyContents
 }
 
 // A TargetStateSymlink represents the state of a symlink in the target state.
 type TargetStateSymlink struct {
-	*LazyLinkname
+	*lazyLinkname
 }
 
 // Apply updates destStateEntry to match t.
