@@ -2,8 +2,6 @@ package chezmoi
 
 import (
 	"os"
-
-	vfs "github.com/twpayne/go-vfs"
 )
 
 // A SourceStateEntry represents the state of an entry in the source state.
@@ -20,7 +18,7 @@ type SourceStateDir struct {
 
 // A SourceStateFile represents the state of a file in the source state.
 type SourceStateFile struct {
-	fs         vfs.FS
+	dirReader  DirReader
 	path       string
 	attributes FileAttributes
 	*lazyContents
@@ -63,7 +61,7 @@ func (s *SourceStateFile) TargetStateEntry(umask os.FileMode) TargetStateEntry {
 			perm: perm &^ umask,
 			lazyContents: &lazyContents{
 				contentsFunc: func() ([]byte, error) {
-					return s.fs.ReadFile(s.path)
+					return s.dirReader.ReadFile(s.path)
 				},
 			},
 		}
@@ -72,7 +70,7 @@ func (s *SourceStateFile) TargetStateEntry(umask os.FileMode) TargetStateEntry {
 			name: s.attributes.Name,
 			lazyContents: &lazyContents{
 				contentsFunc: func() ([]byte, error) {
-					return s.fs.ReadFile(s.path)
+					return s.dirReader.ReadFile(s.path)
 				},
 			},
 		}
@@ -80,7 +78,7 @@ func (s *SourceStateFile) TargetStateEntry(umask os.FileMode) TargetStateEntry {
 		return &TargetStateSymlink{
 			lazyLinkname: &lazyLinkname{
 				linknameFunc: func() (string, error) {
-					linknameBytes, err := s.fs.ReadFile(s.path)
+					linknameBytes, err := s.dirReader.ReadFile(s.path)
 					if err != nil {
 						return "", err
 					}

@@ -1,5 +1,6 @@
 package chezmoi
 
+// FIXME use vfs.PathFS instead of targetDir arg
 // FIXME accumulate all source state warnings/errors
 
 import (
@@ -68,7 +69,7 @@ func NewSourceState(options ...SourceStateOption) *SourceState {
 	return s
 }
 
-// ApplyAll updates targetDir in fs to match s using destDir. FIXME comment
+// ApplyAll updates targetDir in destDir to match s.
 func (s *SourceState) ApplyAll(destDir DestDir, umask os.FileMode, targetDir string) error {
 	for _, targetName := range s.sortedTargetNames() {
 		if err := s.ApplyOne(destDir, umask, targetDir, targetName); err != nil {
@@ -78,7 +79,7 @@ func (s *SourceState) ApplyAll(destDir DestDir, umask os.FileMode, targetDir str
 	return nil
 }
 
-// ApplyOne updates targetName in targetDir on fs to match s using destDir. FIXME comment
+// ApplyOne updates targetName in targetDir on fs to match s using destDir.
 func (s *SourceState) ApplyOne(destDir DestDir, umask os.FileMode, targetDir, targetName string) error {
 	targetPath := path.Join(targetDir, targetName)
 	destStateEntry, err := NewDestStateEntry(destDir, targetPath)
@@ -138,9 +139,9 @@ func (s *SourceState) ExecuteTemplateData(name string, data []byte) ([]byte, err
 }
 
 // Read reads a source state from sourcePath in fs.
-func (s *SourceState) Read(fs vfs.FS, sourceDir string) error {
+func (s *SourceState) Read(dirReader DirReader, sourceDir string) error {
 	sourceDirPrefix := filepath.ToSlash(sourceDir) + pathSeparator
-	return vfs.Walk(fs, sourceDir, func(sourcePath string, info os.FileInfo, err error) error {
+	return vfs.Walk(dirReader, sourceDir, func(sourcePath string, info os.FileInfo, err error) error {
 		sourcePath = filepath.ToSlash(sourcePath)
 		if err != nil {
 			return err
@@ -153,16 +154,16 @@ func (s *SourceState) Read(fs vfs.FS, sourceDir string) error {
 		targetDirName := getTargetDirName(dir)
 		switch {
 		case info.Name() == ignoreName:
-			return s.addPatterns(fs, s.ignore, sourcePath, dir)
+			return s.addPatterns(dirReader, s.ignore, sourcePath, dir)
 		case info.Name() == removeName:
-			return s.addPatterns(fs, s.remove, sourcePath, targetDirName)
+			return s.addPatterns(dirReader, s.remove, sourcePath, targetDirName)
 		case info.Name() == templatesDirName:
-			if err := s.addTemplatesDir(fs, sourcePath); err != nil {
+			if err := s.addTemplatesDir(dirReader, sourcePath); err != nil {
 				return err
 			}
 			return filepath.SkipDir
 		case info.Name() == versionName:
-			data, err := fs.ReadFile(sourcePath)
+			data, err := dirReader.ReadFile(sourcePath)
 			if err != nil {
 				return err
 			}
@@ -215,12 +216,12 @@ func (s *SourceState) Read(fs vfs.FS, sourceDir string) error {
 				}
 			}
 			s.entries[targetName] = &SourceStateFile{
-				fs:         fs,
+				dirReader:  dirReader,
 				path:       sourcePath,
 				attributes: fileAttributes,
 				lazyContents: &lazyContents{
 					contentsFunc: func() ([]byte, error) {
-						return fs.ReadFile(sourcePath)
+						return dirReader.ReadFile(sourcePath)
 					},
 				},
 			}
@@ -260,7 +261,6 @@ func (s *SourceState) Remove(destDir DestDir, umask os.FileMode, targetDir strin
 			return err
 		}
 	}
-
 	return nil
 }
 
@@ -274,7 +274,7 @@ func (s *SourceState) Evaluate(umask os.FileMode) error {
 	return nil
 }
 
-func (s *SourceState) addPatterns(fs vfs.FS, ps *PatternSet, path, relPath string) error {
+func (s *SourceState) addPatterns(fs DirReader, ps *PatternSet, path, relPath string) error {
 	data, err := s.executeTemplate(fs, path)
 	if err != nil {
 		return err
@@ -306,7 +306,7 @@ func (s *SourceState) addPatterns(fs vfs.FS, ps *PatternSet, path, relPath strin
 	return nil
 }
 
-func (s *SourceState) addTemplatesDir(fs vfs.FS, templateDir string) error {
+func (s *SourceState) addTemplatesDir(fs DirReader, templateDir string) error {
 	templateDirPrefix := filepath.ToSlash(templateDir) + pathSeparator
 	return vfs.Walk(fs, templateDir, func(templatePath string, info os.FileInfo, err error) error {
 		templatePath = filepath.ToSlash(templatePath)
@@ -340,8 +340,8 @@ func (s *SourceState) addTemplatesDir(fs vfs.FS, templateDir string) error {
 	})
 }
 
-func (s *SourceState) executeTemplate(fs vfs.FS, path string) ([]byte, error) {
-	data, err := fs.ReadFile(path)
+func (s *SourceState) executeTemplate(dirReader DirReader, path string) ([]byte, error) {
+	data, err := dirReader.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}

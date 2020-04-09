@@ -37,8 +37,9 @@ type DestStateSymlink struct {
 	*lazyLinkname
 }
 
-// NewDestStateEntry returns a new DestStateEntry populated with path from fs.
-func NewDestStateEntry(destDirReader DestDirReader, path string) (DestStateEntry, error) {
+// NewDestStateEntry returns a new DestStateEntry populated with path from
+// destDirReader.
+func NewDestStateEntry(destDirReader DirReader, path string) (DestStateEntry, error) {
 	info, err := destDirReader.Lstat(path)
 	switch {
 	case os.IsNotExist(err):

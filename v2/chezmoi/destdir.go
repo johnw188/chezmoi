@@ -1,14 +1,15 @@
 package chezmoi
 
 // FIXME do we need Stat?
+// FIXME do we need a more specific FileReader interface with just ReadFile?
 
 import (
 	"os"
 	"os/exec"
 )
 
-// A DestDirReader reads from a destination directory.
-type DestDirReader interface {
+// A DirReader reads from a directory.
+type DirReader interface {
 	Glob(pattern string) ([]string, error)
 	Lstat(filename string) (os.FileInfo, error)
 	ReadDir(dirname string) ([]os.FileInfo, error)
@@ -19,7 +20,7 @@ type DestDirReader interface {
 
 // A DestDir makes changes to a destination directory.
 type DestDir interface {
-	DestDirReader
+	DirReader
 	Chmod(name string, mode os.FileMode) error
 	IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error)
 	Mkdir(name string, perm os.FileMode) error
