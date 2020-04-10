@@ -219,6 +219,9 @@ func TestSourceStateRead(t *testing.T) {
 						attributes: DirAttributes{
 							Name: "foo",
 						},
+						targetStateEntry: &TargetStateDir{
+							perm: 0o755,
+						},
 					},
 				}),
 			),
@@ -239,8 +242,10 @@ func TestSourceStateRead(t *testing.T) {
 							Name: "foo",
 							Type: SourceFileTypeFile,
 						},
-						lazyContents: &lazyContents{
-							contents: []byte("bar"),
+						lazyContents: newLazyContents([]byte("bar")),
+						targetStateEntry: &TargetStateFile{
+							perm:         0o644,
+							lazyContents: newLazyContents([]byte("bar")),
 						},
 					},
 				}),
@@ -291,8 +296,10 @@ func TestSourceStateRead(t *testing.T) {
 							Name: "foo",
 							Type: SourceFileTypeScript,
 						},
-						lazyContents: &lazyContents{
-							contents: []byte("bar"),
+						lazyContents: newLazyContents([]byte("bar")),
+						targetStateEntry: &TargetStateScript{
+							name:         "foo",
+							lazyContents: newLazyContents([]byte("bar")),
 						},
 					},
 				}),
@@ -314,14 +321,9 @@ func TestSourceStateRead(t *testing.T) {
 							Name: "foo",
 							Type: SourceFileTypeSymlink,
 						},
-						lazyContents: &lazyContents{
-							contents: []byte("bar"),
-						},
-						targetStateEntry: &TargetStateFile{
-							perm: 0o644,
-							lazyContents: &lazyContents{
-								contents: []byte("bar"),
-							},
+						lazyContents: newLazyContents([]byte("bar")),
+						targetStateEntry: &TargetStateSymlink{
+							lazyLinkname: newLazyLinkname("bar"),
 						},
 					},
 				}),
@@ -344,6 +346,9 @@ func TestSourceStateRead(t *testing.T) {
 						attributes: DirAttributes{
 							Name: "foo",
 						},
+						targetStateEntry: &TargetStateDir{
+							perm: 0o755,
+						},
 					},
 					"foo/bar": &SourceStateFile{
 						path: "/home/user/.local/share/chezmoi/foo/bar",
@@ -352,12 +357,12 @@ func TestSourceStateRead(t *testing.T) {
 							Type: SourceFileTypeFile,
 						},
 						lazyContents: &lazyContents{
-							contents: []byte("bar"),
+							contents: []byte("baz"),
 						},
 						targetStateEntry: &TargetStateFile{
 							perm: 0o644,
 							lazyContents: &lazyContents{
-								contents: []byte("bar"),
+								contents: []byte("baz"),
 							},
 						},
 					},
@@ -467,6 +472,9 @@ func TestSourceStateRead(t *testing.T) {
 						attributes: DirAttributes{
 							Name: "foo",
 						},
+						targetStateEntry: &TargetStateDir{
+							perm: 0o755,
+						},
 					},
 				}),
 				withMinVersion(
@@ -503,9 +511,11 @@ func TestSourceStateRead(t *testing.T) {
 			),
 		},
 	} {
-		if tc.name != "file" {
-			continue
-		}
+		/*
+			if tc.name != "symlink" {
+				continue
+			}
+		*/
 		t.Run(tc.name, func(t *testing.T) {
 			fs, cleanup, err := vfst.NewTestFS(tc.root)
 			require.NoError(t, err)

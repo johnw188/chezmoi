@@ -235,9 +235,9 @@ func (s *SourceState) Read() error {
 				exact: dirAttributes.Exact,
 			}
 			s.entries[targetName] = &SourceStateDir{
-				path:        sourcePath,
-				attributes:  dirAttributes,
-				targetState: targetStateDir,
+				path:             sourcePath,
+				attributes:       dirAttributes,
+				targetStateEntry: targetStateDir,
 			}
 			return nil
 		case info.Mode().IsRegular():
@@ -297,6 +297,7 @@ func (s *SourceState) Read() error {
 			s.entries[targetName] = &SourceStateFile{
 				path:             sourcePath,
 				attributes:       fileAttributes,
+				lazyContents:     lazyContents,
 				targetStateEntry: targetStateEntry,
 			}
 			return nil
@@ -341,7 +342,11 @@ func (s *SourceState) Remove(destDir FileSystem, umask os.FileMode, targetDir st
 // Evaluate evaluates every target state entry in s.
 func (s *SourceState) Evaluate() error {
 	for _, targetName := range s.sortedTargetNames() {
-		targetStateEntry := s.entries[targetName].TargetStateEntry()
+		sourceStateEntry := s.entries[targetName]
+		if err := sourceStateEntry.Evaluate(); err != nil {
+			return err
+		}
+		targetStateEntry := sourceStateEntry.TargetStateEntry()
 		if err := targetStateEntry.Evaluate(); err != nil {
 			return err
 		}
