@@ -106,8 +106,10 @@ func TestSourceStateApplyAll(t *testing.T) {
 			require.NoError(t, err)
 			defer cleanup()
 
-			s := NewSourceState()
-			require.NoError(t, s.Read(fs, "/home/user/.local/share/chezmoi"))
+			s := NewSourceState(
+				WithSourcePath("/home/user/.local/share/chezmoi"),
+			)
+			require.NoError(t, s.Read(fs))
 			require.NoError(t, s.Evaluate(vfst.DefaultUmask))
 			require.NoError(t, s.ApplyAll(NewFSDestDir(fs), vfst.DefaultUmask, "/home/user"))
 
@@ -135,8 +137,10 @@ func TestSourceStateArchive(t *testing.T) {
 	require.NoError(t, err)
 	defer cleanup()
 
-	s := NewSourceState()
-	require.NoError(t, s.Read(fs, "/home/user/.local/share/chezmoi"))
+	s := NewSourceState(
+		WithSourcePath("/home/user/.local/share/chezmoi"),
+	)
+	require.NoError(t, s.Read(fs))
 	require.NoError(t, s.Evaluate(vfst.DefaultUmask))
 
 	b := &bytes.Buffer{}
@@ -182,7 +186,6 @@ func TestSourceStateArchive(t *testing.T) {
 }
 
 func TestSourceStateRead(t *testing.T) {
-	t.Skip() // FIXME
 	for _, tc := range []struct {
 		name                string
 		root                interface{}
@@ -195,7 +198,9 @@ func TestSourceStateRead(t *testing.T) {
 			root: map[string]interface{}{
 				"/home/user/.local/share/chezmoi": &vfst.Dir{Perm: 0o755},
 			},
-			expectedSourceState: NewSourceState(),
+			expectedSourceState: NewSourceState(
+				WithSourcePath("/home/user/.local/share/chezmoi"),
+			),
 		},
 		{
 			name: "dir",
@@ -205,6 +210,7 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
+				WithSourcePath("/home/user/.local/share/chezmoi"),
 				withEntries(map[string]SourceStateEntry{
 					"foo": &SourceStateDir{
 						path: "/home/user/.local/share/chezmoi/foo",
@@ -223,6 +229,7 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
+				WithSourcePath("/home/user/.local/share/chezmoi"),
 				withEntries(map[string]SourceStateEntry{
 					"foo": &SourceStateFile{
 						path: "/home/user/.local/share/chezmoi/foo",
@@ -271,6 +278,7 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
+				WithSourcePath("/home/user/.local/share/chezmoi"),
 				withEntries(map[string]SourceStateEntry{
 					"foo": &SourceStateFile{
 						path: "/home/user/.local/share/chezmoi/run_foo",
@@ -290,6 +298,7 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
+				WithSourcePath("/home/user/.local/share/chezmoi"),
 				withEntries(map[string]SourceStateEntry{
 					"foo": &SourceStateFile{
 						path: "/home/user/.local/share/chezmoi/symlink_foo",
@@ -311,6 +320,7 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
+				WithSourcePath("/home/user/.local/share/chezmoi"),
 				withEntries(map[string]SourceStateEntry{
 					"foo": &SourceStateDir{
 						path: "/home/user/.local/share/chezmoi/foo",
@@ -336,6 +346,7 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
+				WithSourcePath("/home/user/.local/share/chezmoi"),
 				withIgnore(
 					NewPatternSet(
 						withAdd(t, "README.md", true),
@@ -352,6 +363,7 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
+				WithSourcePath("/home/user/.local/share/chezmoi"),
 				withIgnore(
 					NewPatternSet(
 						withAdd(t, "README.md", true),
@@ -367,6 +379,7 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
+				WithSourcePath("/home/user/.local/share/chezmoi"),
 				withRemove(
 					NewPatternSet(
 						withAdd(t, "*.txt", false),
@@ -384,6 +397,7 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
+				WithSourcePath("/home/user/.local/share/chezmoi"),
 				withTemplates(
 					map[string]*template.Template{
 						"foo": template.Must(template.New("foo").Parse("bar")),
@@ -399,6 +413,7 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
+				WithSourcePath("/home/user/.local/share/chezmoi"),
 				withMinVersion(
 					&semver.Version{
 						Major: 1,
@@ -419,6 +434,7 @@ func TestSourceStateRead(t *testing.T) {
 				},
 			},
 			expectedSourceState: NewSourceState(
+				WithSourcePath("/home/user/.local/share/chezmoi"),
 				withEntries(map[string]SourceStateEntry{
 					"foo": &SourceStateDir{
 						path: "/home/user/.local/share/chezmoi/foo",
@@ -445,7 +461,9 @@ func TestSourceStateRead(t *testing.T) {
 					},
 				},
 			},
-			expectedSourceState: NewSourceState(),
+			expectedSourceState: NewSourceState(
+				WithSourcePath("/home/user/.local/share/chezmoi"),
+			),
 		},
 		{
 			name: "ignore_file",
@@ -454,7 +472,9 @@ func TestSourceStateRead(t *testing.T) {
 					".ignore": "",
 				},
 			},
-			expectedSourceState: NewSourceState(),
+			expectedSourceState: NewSourceState(
+				WithSourcePath("/home/user/.local/share/chezmoi"),
+			),
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -462,8 +482,12 @@ func TestSourceStateRead(t *testing.T) {
 			require.NoError(t, err)
 			defer cleanup()
 
-			s := NewSourceState(tc.sourceStateOptions...)
-			err = s.Read(fs, "/home/user/.local/share/chezmoi")
+			sourceStateOptions := []SourceStateOption{
+				WithSourcePath("/home/user/.local/share/chezmoi"),
+			}
+			sourceStateOptions = append(sourceStateOptions, tc.sourceStateOptions...)
+			s := NewSourceState(sourceStateOptions...)
+			err = s.Read(fs)
 			if tc.expectedError != "" {
 				assert.Error(t, err)
 				assert.Equal(t, tc.expectedError, err.Error())
@@ -590,8 +614,10 @@ func TestSourceStateRemove(t *testing.T) {
 			require.NoError(t, err)
 			defer cleanup()
 
-			s := NewSourceState()
-			require.NoError(t, s.Read(fs, "/home/user/.local/share/chezmoi"))
+			s := NewSourceState(
+				WithSourcePath("/home/user/.local/share/chezmoi"),
+			)
+			require.NoError(t, s.Read(fs))
 			require.NoError(t, s.Evaluate(vfst.DefaultUmask))
 
 			require.NoError(t, s.Remove(NewFSDestDir(fs), vfst.DefaultUmask, "/home/user"))

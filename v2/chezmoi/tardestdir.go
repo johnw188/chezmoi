@@ -90,7 +90,9 @@ func (d *TARDestDir) WriteSymlink(oldname, newname string) error {
 	return d.w.WriteHeader(&header)
 }
 
-func getHeaderTemplate() tar.Header {
+// TARHeaderTemplate returns a tar.Header template populated with the current
+// user and time.
+func TARHeaderTemplate() tar.Header {
 	// Attempt to lookup the current user. Ignore errors because the default
 	// zero values are reasonable.
 	var (

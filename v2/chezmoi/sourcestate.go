@@ -20,7 +20,9 @@ import (
 
 // A SourceState is a source state.
 type SourceState struct {
-	entries map[string]SourceStateEntry
+	sourcePath string
+	fs         DestDir
+	entries    map[string]SourceStateEntry
 	// gpg             *GPG // FIXME
 	ignore          *PatternSet
 	minVersion      *semver.Version
@@ -33,6 +35,20 @@ type SourceState struct {
 
 // A SourceStateOption sets an option on a source state.
 type SourceStateOption func(*SourceState)
+
+// WithFileSystem sets the filesystem.
+func WithFileSystem(fs DestDir) SourceStateOption {
+	return func(s *SourceState) {
+		s.fs = fs
+	}
+}
+
+// WithSourcePath sets the source path.
+func WithSourcePath(sourcePath string) SourceStateOption {
+	return func(s *SourceState) {
+		s.sourcePath = sourcePath
+	}
+}
 
 // WithTemplateData sets the template data.
 func WithTemplateData(templateData interface{}) SourceStateOption {
@@ -67,6 +83,11 @@ func NewSourceState(options ...SourceStateOption) *SourceState {
 		option(s)
 	}
 	return s
+}
+
+// Add adds sourceStateEntry to s.
+func (s *SourceState) Add() error {
+	return nil // FIXME
 }
 
 // ApplyAll updates targetDir in destDir to match s.
@@ -139,14 +160,14 @@ func (s *SourceState) ExecuteTemplateData(name string, data []byte) ([]byte, err
 }
 
 // Read reads a source state from sourcePath in fs.
-func (s *SourceState) Read(dirReader DirReader, sourceDir string) error {
-	sourceDirPrefix := filepath.ToSlash(sourceDir) + pathSeparator
-	return vfs.Walk(dirReader, sourceDir, func(sourcePath string, info os.FileInfo, err error) error {
+func (s *SourceState) Read(dirReader DirReader) error {
+	sourceDirPrefix := filepath.ToSlash(s.sourcePath) + pathSeparator
+	return vfs.Walk(dirReader, s.sourcePath, func(sourcePath string, info os.FileInfo, err error) error {
 		sourcePath = filepath.ToSlash(sourcePath)
 		if err != nil {
 			return err
 		}
-		if sourcePath == sourceDir {
+		if sourcePath == s.sourcePath {
 			return nil
 		}
 		relPath := strings.TrimPrefix(sourcePath, sourceDirPrefix)
@@ -216,7 +237,6 @@ func (s *SourceState) Read(dirReader DirReader, sourceDir string) error {
 				}
 			}
 			s.entries[targetName] = &SourceStateFile{
-				dirReader:  dirReader,
 				path:       sourcePath,
 				attributes: fileAttributes,
 				lazyContents: &lazyContents{

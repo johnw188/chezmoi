@@ -53,6 +53,7 @@ func (ll *lazyLinkname) Linkname() (string, error) {
 	}
 	if ll.linknameFunc != nil {
 		ll.linkname, ll.linknameErr = ll.linknameFunc()
+		ll.linknameFunc = nil
 	}
 	return ll.linkname, ll.linknameErr
 }
