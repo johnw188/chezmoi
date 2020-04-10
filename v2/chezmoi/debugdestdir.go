@@ -9,11 +9,11 @@ import (
 
 // A DebugDestDir wraps a DestDir and logs all of the actions it executes.
 type DebugDestDir struct {
-	d DestDir
+	d FileSystem
 }
 
 // NewDebugDestDir returns a new DebugDestDir.
-func NewDebugDestDir(d DestDir) *DebugDestDir {
+func NewDebugDestDir(d FileSystem) *DebugDestDir {
 	return &DebugDestDir{
 		d: d,
 	}

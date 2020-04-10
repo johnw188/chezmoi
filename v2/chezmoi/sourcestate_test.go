@@ -107,10 +107,11 @@ func TestSourceStateApplyAll(t *testing.T) {
 			defer cleanup()
 
 			s := NewSourceState(
+				WithFileSystem(NewFSDestDir(fs)),
 				WithSourcePath("/home/user/.local/share/chezmoi"),
 			)
-			require.NoError(t, s.Read(fs))
-			require.NoError(t, s.Evaluate(vfst.DefaultUmask))
+			require.NoError(t, s.Read())
+			require.NoError(t, s.Evaluate())
 			require.NoError(t, s.ApplyAll(NewFSDestDir(fs), vfst.DefaultUmask, "/home/user"))
 
 			vfst.RunTests(t, fs, "", tc.tests...)
@@ -138,10 +139,11 @@ func TestSourceStateArchive(t *testing.T) {
 	defer cleanup()
 
 	s := NewSourceState(
+		WithFileSystem(NewFSDestDir(fs)),
 		WithSourcePath("/home/user/.local/share/chezmoi"),
 	)
-	require.NoError(t, s.Read(fs))
-	require.NoError(t, s.Evaluate(vfst.DefaultUmask))
+	require.NoError(t, s.Read())
+	require.NoError(t, s.Evaluate())
 
 	b := &bytes.Buffer{}
 	destDir := NewTARDestDir(b, tar.Header{}, vfst.DefaultUmask)
@@ -237,6 +239,9 @@ func TestSourceStateRead(t *testing.T) {
 							Name: "foo",
 							Type: SourceFileTypeFile,
 						},
+						lazyContents: &lazyContents{
+							contents: []byte("bar"),
+						},
 					},
 				}),
 			),
@@ -286,6 +291,9 @@ func TestSourceStateRead(t *testing.T) {
 							Name: "foo",
 							Type: SourceFileTypeScript,
 						},
+						lazyContents: &lazyContents{
+							contents: []byte("bar"),
+						},
 					},
 				}),
 			),
@@ -305,6 +313,15 @@ func TestSourceStateRead(t *testing.T) {
 						attributes: FileAttributes{
 							Name: "foo",
 							Type: SourceFileTypeSymlink,
+						},
+						lazyContents: &lazyContents{
+							contents: []byte("bar"),
+						},
+						targetStateEntry: &TargetStateFile{
+							perm: 0o644,
+							lazyContents: &lazyContents{
+								contents: []byte("bar"),
+							},
 						},
 					},
 				}),
@@ -333,6 +350,15 @@ func TestSourceStateRead(t *testing.T) {
 						attributes: FileAttributes{
 							Name: "bar",
 							Type: SourceFileTypeFile,
+						},
+						lazyContents: &lazyContents{
+							contents: []byte("bar"),
+						},
+						targetStateEntry: &TargetStateFile{
+							perm: 0o644,
+							lazyContents: &lazyContents{
+								contents: []byte("bar"),
+							},
 						},
 					},
 				}),
@@ -477,24 +503,30 @@ func TestSourceStateRead(t *testing.T) {
 			),
 		},
 	} {
+		if tc.name != "file" {
+			continue
+		}
 		t.Run(tc.name, func(t *testing.T) {
 			fs, cleanup, err := vfst.NewTestFS(tc.root)
 			require.NoError(t, err)
 			defer cleanup()
 
 			sourceStateOptions := []SourceStateOption{
+				WithFileSystem(NewFSDestDir(fs)),
 				WithSourcePath("/home/user/.local/share/chezmoi"),
 			}
 			sourceStateOptions = append(sourceStateOptions, tc.sourceStateOptions...)
 			s := NewSourceState(sourceStateOptions...)
-			err = s.Read(fs)
+			err = s.Read()
 			if tc.expectedError != "" {
 				assert.Error(t, err)
 				assert.Equal(t, tc.expectedError, err.Error())
 				return
 			}
 			require.NoError(t, err)
-			require.NoError(t, s.Evaluate(vfst.DefaultUmask))
+			require.NoError(t, s.Evaluate())
+			require.NoError(t, tc.expectedSourceState.Evaluate())
+			s.fs = nil
 			assert.Equal(t, tc.expectedSourceState, s)
 		})
 	}
@@ -615,10 +647,11 @@ func TestSourceStateRemove(t *testing.T) {
 			defer cleanup()
 
 			s := NewSourceState(
+				WithFileSystem(NewFSDestDir(fs)),
 				WithSourcePath("/home/user/.local/share/chezmoi"),
 			)
-			require.NoError(t, s.Read(fs))
-			require.NoError(t, s.Evaluate(vfst.DefaultUmask))
+			require.NoError(t, s.Read())
+			require.NoError(t, s.Evaluate())
 
 			require.NoError(t, s.Remove(NewFSDestDir(fs), vfst.DefaultUmask, "/home/user"))
 

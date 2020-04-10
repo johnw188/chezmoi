@@ -38,10 +38,11 @@ func (lc *lazyContents) ContentsSHA256() ([]byte, error) {
 		return sha256Sum(nil), nil
 	}
 	if lc.contentsSHA256 == nil {
-		if _, err := lc.Contents(); err != nil {
+		contents, err := lc.Contents()
+		if err != nil {
 			return nil, err
 		}
-		lc.contentsSHA256 = sha256Sum(lc.contents)
+		lc.contentsSHA256 = sha256Sum(contents)
 	}
 	return lc.contentsSHA256, nil
 }

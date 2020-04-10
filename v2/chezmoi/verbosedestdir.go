@@ -18,14 +18,14 @@ import (
 // A VerboseDestDir wraps a DestDir and logs all of the actions it executes and
 // any errors as pseudo shell commands.
 type VerboseDestDir struct {
-	d               DestDir
+	d               FileSystem
 	w               io.Writer
 	colored         bool
 	maxDiffDataSize int
 }
 
 // NewVerboseDestDir returns a new VerboseDestDir.
-func NewVerboseDestDir(w io.Writer, m DestDir, colored bool, maxDiffDataSize int) *VerboseDestDir {
+func NewVerboseDestDir(w io.Writer, m FileSystem, colored bool, maxDiffDataSize int) *VerboseDestDir {
 	return &VerboseDestDir{
 		d:               m,
 		w:               w,

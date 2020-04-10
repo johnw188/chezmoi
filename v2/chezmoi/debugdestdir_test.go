@@ -1,3 +1,3 @@
 package chezmoi
 
-var _ DestDir = &DebugDestDir{}
+var _ FileSystem = &DebugDestDir{}

@@ -9,7 +9,7 @@ import (
 // An DestStateEntry represents the state of an entry in the destination state.
 type DestStateEntry interface {
 	Path() string
-	Remove(destDir DestDir) error
+	Remove(destDir FileSystem) error
 }
 
 // A DestStateAbsent represents the absence of an entry in the destination
@@ -39,7 +39,7 @@ type DestStateSymlink struct {
 
 // NewDestStateEntry returns a new DestStateEntry populated with path from
 // destDirReader.
-func NewDestStateEntry(destDirReader DirReader, path string) (DestStateEntry, error) {
+func NewDestStateEntry(destDirReader FileSystemReader, path string) (DestStateEntry, error) {
 	info, err := destDirReader.Lstat(path)
 	switch {
 	case os.IsNotExist(err):
@@ -88,7 +88,7 @@ func (d *DestStateAbsent) Path() string {
 }
 
 // Remove removes d.
-func (d *DestStateAbsent) Remove(destDir DestDir) error {
+func (d *DestStateAbsent) Remove(destDir FileSystem) error {
 	return nil
 }
 
@@ -98,7 +98,7 @@ func (d *DestStateDir) Path() string {
 }
 
 // Remove removes d.
-func (d *DestStateDir) Remove(destDir DestDir) error {
+func (d *DestStateDir) Remove(destDir FileSystem) error {
 	return destDir.RemoveAll(d.path)
 }
 
@@ -108,7 +108,7 @@ func (d *DestStateFile) Path() string {
 }
 
 // Remove removes d.
-func (d *DestStateFile) Remove(destDir DestDir) error {
+func (d *DestStateFile) Remove(destDir FileSystem) error {
 	return destDir.RemoveAll(d.path)
 }
 
@@ -118,6 +118,6 @@ func (d *DestStateSymlink) Path() string {
 }
 
 // Remove removes d.
-func (d *DestStateSymlink) Remove(destDir DestDir) error {
+func (d *DestStateSymlink) Remove(destDir FileSystem) error {
 	return destDir.RemoveAll(d.path)
 }

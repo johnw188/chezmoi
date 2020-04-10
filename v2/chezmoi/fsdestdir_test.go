@@ -1,3 +1,3 @@
 package chezmoi
 
-var _ DestDir = &FSDestDir{}
+var _ FileSystem = &FSDestDir{}

@@ -1,3 +1,3 @@
 package chezmoi
 
-var _ DestDir = &TARDestDir{}
+var _ FileSystem = &TARDestDir{}

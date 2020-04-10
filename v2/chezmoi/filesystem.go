@@ -8,8 +8,8 @@ import (
 	"os/exec"
 )
 
-// A DirReader reads from a directory.
-type DirReader interface {
+// A FileSystemReader reads from a file system.
+type FileSystemReader interface {
 	Glob(pattern string) ([]string, error)
 	Lstat(filename string) (os.FileInfo, error)
 	ReadDir(dirname string) ([]os.FileInfo, error)
@@ -18,9 +18,9 @@ type DirReader interface {
 	Stat(name string) (os.FileInfo, error)
 }
 
-// A DestDir makes changes to a destination directory.
-type DestDir interface {
-	DirReader
+// A FileSystem writes to a file system.
+type FileSystem interface {
+	FileSystemReader
 	Chmod(name string, mode os.FileMode) error
 	IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error)
 	Mkdir(name string, perm os.FileMode) error

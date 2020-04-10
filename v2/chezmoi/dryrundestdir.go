@@ -8,11 +8,11 @@ import (
 // DryRunDestDir is an DestDir that reads from, but does not write to, to a
 // wrapped DestDir.
 type DryRunDestDir struct {
-	d DestDir
+	d FileSystem
 }
 
 // NewDryRunDestDir returns a new DryRunDestDir that wraps m.
-func NewDryRunDestDir(d DestDir) *DryRunDestDir {
+func NewDryRunDestDir(d FileSystem) *DryRunDestDir {
 	return &DryRunDestDir{
 		d: d,
 	}

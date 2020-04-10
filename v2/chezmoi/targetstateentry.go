@@ -12,7 +12,7 @@ import (
 
 // A TargetStateEntry represents the state of an entry in the target state.
 type TargetStateEntry interface {
-	Apply(destDir DestDir, destStateEntry DestStateEntry) error
+	Apply(destDir FileSystem, destStateEntry DestStateEntry) error
 	Equal(destStateEntry DestStateEntry) (bool, error)
 	Evaluate() error
 }
@@ -45,7 +45,7 @@ type TargetStateSymlink struct {
 }
 
 // Apply updates destStateEntry to match t.
-func (t *TargetStateAbsent) Apply(destDir DestDir, destStateEntry DestStateEntry) error {
+func (t *TargetStateAbsent) Apply(destDir FileSystem, destStateEntry DestStateEntry) error {
 	if _, ok := destStateEntry.(*DestStateAbsent); ok {
 		return nil
 	}
@@ -64,7 +64,7 @@ func (t *TargetStateAbsent) Evaluate() error {
 }
 
 // Apply updates destStateEntry to match t. It does not recurse.
-func (t *TargetStateDir) Apply(destDir DestDir, destStateEntry DestStateEntry) error {
+func (t *TargetStateDir) Apply(destDir FileSystem, destStateEntry DestStateEntry) error {
 	if destStateDir, ok := destStateEntry.(*DestStateDir); ok {
 		if destStateDir.perm == t.perm {
 			return nil
@@ -92,7 +92,7 @@ func (t *TargetStateDir) Evaluate() error {
 }
 
 // Apply updates destStateEntry to match t.
-func (t *TargetStateFile) Apply(destDir DestDir, destStateEntry DestStateEntry) error {
+func (t *TargetStateFile) Apply(destDir FileSystem, destStateEntry DestStateEntry) error {
 	var destContents []byte
 	destIsFileAndPermMatches := false
 	if destStateFile, ok := destStateEntry.(*DestStateFile); ok {
@@ -169,7 +169,7 @@ func (t *TargetStateFile) Evaluate() error {
 
 // Apply does nothing for scripts.
 // FIXME maybe this should call Run?
-func (t *TargetStateScript) Apply(destDir DestDir, destStateEntry DestStateEntry) error {
+func (t *TargetStateScript) Apply(destDir FileSystem, destStateEntry DestStateEntry) error {
 	return nil
 }
 
@@ -187,7 +187,7 @@ func (t *TargetStateScript) Evaluate() error {
 }
 
 // Run runs t.
-func (t *TargetStateScript) Run(destDir DestDir) error {
+func (t *TargetStateScript) Run(destDir FileSystem) error {
 	contents, err := t.Contents()
 	if err != nil {
 		return err
@@ -239,7 +239,7 @@ func (t *TargetStateScript) Run(destDir DestDir) error {
 }
 
 // Apply updates destStateEntry to match t.
-func (t *TargetStateSymlink) Apply(destDir DestDir, destStateEntry DestStateEntry) error {
+func (t *TargetStateSymlink) Apply(destDir FileSystem, destStateEntry DestStateEntry) error {
 	if destStateSymlink, ok := destStateEntry.(*DestStateSymlink); ok {
 		destLinkname, err := destStateSymlink.Linkname()
 		if err != nil {

@@ -40,7 +40,8 @@ func (d *FSDestDir) RunCmd(cmd *exec.Cmd) error {
 
 // WriteSymlink implements DestDir.WriteSymlink.
 func (d *FSDestDir) WriteSymlink(oldname, newname string) error {
-	// Special case: if writing to the real filesystem, use github.com/google/renameio
+	// Special case: if writing to the real filesystem, use
+	// github.com/google/renameio.
 	if d.FS == vfs.OSFS {
 		return renameio.Symlink(oldname, newname)
 	}
@@ -52,8 +53,8 @@ func (d *FSDestDir) WriteSymlink(oldname, newname string) error {
 
 // WriteFile implements DestDir.WriteFile.
 func (d *FSDestDir) WriteFile(name string, data []byte, perm os.FileMode, currData []byte) error {
-	// Special case: if writing to the real filesystem on non-Windows, use
-	// github.com/google/renameio
+	// Special case: if writing to the real filesystem on a non-Windows system,
+	// use github.com/google/renameio.
 	if d.FS == vfs.OSFS && runtime.GOOS != "windows" {
 		dir := path.Dir(name)
 		dev, ok := d.devCache[dir]

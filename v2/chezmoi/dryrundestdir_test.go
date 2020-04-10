@@ -1,3 +1,3 @@
 package chezmoi
 
-var _ DestDir = &DryRunDestDir{}
+var _ FileSystem = &DryRunDestDir{}

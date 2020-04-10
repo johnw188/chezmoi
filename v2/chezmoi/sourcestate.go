@@ -2,6 +2,8 @@ package chezmoi
 
 // FIXME use vfs.PathFS instead of targetDir arg
 // FIXME accumulate all source state warnings/errors
+// FIXME encryption
+// FIXME templates
 
 import (
 	"bufio"
@@ -20,10 +22,10 @@ import (
 
 // A SourceState is a source state.
 type SourceState struct {
-	sourcePath string
-	fs         DestDir
-	entries    map[string]SourceStateEntry
-	// gpg             *GPG // FIXME
+	fs              FileSystem
+	sourcePath      string
+	umask           os.FileMode
+	entries         map[string]SourceStateEntry
 	ignore          *PatternSet
 	minVersion      *semver.Version
 	remove          *PatternSet
@@ -37,7 +39,7 @@ type SourceState struct {
 type SourceStateOption func(*SourceState)
 
 // WithFileSystem sets the filesystem.
-func WithFileSystem(fs DestDir) SourceStateOption {
+func WithFileSystem(fs FileSystem) SourceStateOption {
 	return func(s *SourceState) {
 		s.fs = fs
 	}
@@ -71,9 +73,17 @@ func WithTemplateOptions(templateOptions []string) SourceStateOption {
 	}
 }
 
+// WithUmask sets the umask.
+func WithUmask(umask os.FileMode) SourceStateOption {
+	return func(s *SourceState) {
+		s.umask = umask
+	}
+}
+
 // NewSourceState creates a new source state with the given options.
 func NewSourceState(options ...SourceStateOption) *SourceState {
 	s := &SourceState{
+		umask:           0o22,
 		entries:         make(map[string]SourceStateEntry),
 		ignore:          NewPatternSet(),
 		remove:          NewPatternSet(),
@@ -91,7 +101,7 @@ func (s *SourceState) Add() error {
 }
 
 // ApplyAll updates targetDir in destDir to match s.
-func (s *SourceState) ApplyAll(destDir DestDir, umask os.FileMode, targetDir string) error {
+func (s *SourceState) ApplyAll(destDir FileSystem, umask os.FileMode, targetDir string) error {
 	for _, targetName := range s.sortedTargetNames() {
 		if err := s.ApplyOne(destDir, umask, targetDir, targetName); err != nil {
 			return err
@@ -101,13 +111,13 @@ func (s *SourceState) ApplyAll(destDir DestDir, umask os.FileMode, targetDir str
 }
 
 // ApplyOne updates targetName in targetDir on fs to match s using destDir.
-func (s *SourceState) ApplyOne(destDir DestDir, umask os.FileMode, targetDir, targetName string) error {
+func (s *SourceState) ApplyOne(destDir FileSystem, umask os.FileMode, targetDir, targetName string) error {
 	targetPath := path.Join(targetDir, targetName)
 	destStateEntry, err := NewDestStateEntry(destDir, targetPath)
 	if err != nil {
 		return err
 	}
-	targetStateEntry := s.entries[targetName].TargetStateEntry(umask)
+	targetStateEntry := s.entries[targetName].TargetStateEntry()
 	if err != nil {
 		return err
 	}
@@ -160,9 +170,9 @@ func (s *SourceState) ExecuteTemplateData(name string, data []byte) ([]byte, err
 }
 
 // Read reads a source state from sourcePath in fs.
-func (s *SourceState) Read(dirReader DirReader) error {
+func (s *SourceState) Read() error {
 	sourceDirPrefix := filepath.ToSlash(s.sourcePath) + pathSeparator
-	return vfs.Walk(dirReader, s.sourcePath, func(sourcePath string, info os.FileInfo, err error) error {
+	return vfs.Walk(s.fs, s.sourcePath, func(sourcePath string, info os.FileInfo, err error) error {
 		sourcePath = filepath.ToSlash(sourcePath)
 		if err != nil {
 			return err
@@ -175,16 +185,16 @@ func (s *SourceState) Read(dirReader DirReader) error {
 		targetDirName := getTargetDirName(dir)
 		switch {
 		case info.Name() == ignoreName:
-			return s.addPatterns(dirReader, s.ignore, sourcePath, dir)
+			return s.addPatterns(s.ignore, sourcePath, dir)
 		case info.Name() == removeName:
-			return s.addPatterns(dirReader, s.remove, sourcePath, targetDirName)
+			return s.addPatterns(s.remove, sourcePath, targetDirName)
 		case info.Name() == templatesDirName:
-			if err := s.addTemplatesDir(dirReader, sourcePath); err != nil {
+			if err := s.addTemplatesDir(sourcePath); err != nil {
 				return err
 			}
 			return filepath.SkipDir
 		case info.Name() == versionName:
-			data, err := dirReader.ReadFile(sourcePath)
+			data, err := s.fs.ReadFile(sourcePath)
 			if err != nil {
 				return err
 			}
@@ -216,9 +226,18 @@ func (s *SourceState) Read(dirReader DirReader) error {
 					},
 				}
 			}
+			perm := os.FileMode(0o777)
+			if dirAttributes.Private {
+				perm &^= 0o77
+			}
+			targetStateDir := &TargetStateDir{
+				perm:  perm &^ s.umask,
+				exact: dirAttributes.Exact,
+			}
 			s.entries[targetName] = &SourceStateDir{
-				path:       sourcePath,
-				attributes: dirAttributes,
+				path:        sourcePath,
+				attributes:  dirAttributes,
+				targetState: targetStateDir,
 			}
 			return nil
 		case info.Mode().IsRegular():
@@ -236,14 +255,49 @@ func (s *SourceState) Read(dirReader DirReader) error {
 					},
 				}
 			}
-			s.entries[targetName] = &SourceStateFile{
-				path:       sourcePath,
-				attributes: fileAttributes,
-				lazyContents: &lazyContents{
-					contentsFunc: func() ([]byte, error) {
-						return dirReader.ReadFile(sourcePath)
-					},
+			lazyContents := &lazyContents{
+				contentsFunc: func() ([]byte, error) {
+					return s.fs.ReadFile(sourcePath)
 				},
+			}
+			var targetStateEntry TargetStateEntry
+			switch fileAttributes.Type {
+			case SourceFileTypeFile:
+				perm := os.FileMode(0o666)
+				if fileAttributes.Executable {
+					perm |= 0o111
+				}
+				if fileAttributes.Private {
+					perm &^= 0o77
+				}
+				targetStateEntry = &TargetStateFile{
+					perm:         perm &^ s.umask,
+					lazyContents: lazyContents,
+				}
+			case SourceFileTypeScript:
+				targetStateEntry = &TargetStateScript{
+					name:         fileAttributes.Name,
+					lazyContents: lazyContents,
+				}
+			case SourceFileTypeSymlink:
+				targetStateEntry = &TargetStateSymlink{
+					lazyLinkname: &lazyLinkname{
+						linknameFunc: func() (string, error) {
+							linknameBytes, err := lazyContents.Contents()
+							if err != nil {
+								return "", err
+							}
+							return string(linknameBytes), nil
+						},
+					},
+				}
+			default:
+				panic(nil)
+			}
+			s.entries[targetName] = &SourceStateFile{
+				path:             sourcePath,
+				attributes:       fileAttributes,
+				targetStateEntry: targetStateEntry,
 			}
 			return nil
 		default:
@@ -256,7 +310,7 @@ func (s *SourceState) Read(dirReader DirReader) error {
 }
 
 // Remove removes everything in targetDir that matches s's remove pattern set.
-func (s *SourceState) Remove(destDir DestDir, umask os.FileMode, targetDir string) error {
+func (s *SourceState) Remove(destDir FileSystem, umask os.FileMode, targetDir string) error {
 	// Build a set of targets to remove.
 	targetDirPrefix := targetDir + pathSeparator
 	targetPathsToRemove := NewStringSet()
@@ -285,17 +339,18 @@ func (s *SourceState) Remove(destDir DestDir, umask os.FileMode, targetDir strin
 }
 
 // Evaluate evaluates every target state entry in s.
-func (s *SourceState) Evaluate(umask os.FileMode) error {
+func (s *SourceState) Evaluate() error {
 	for _, targetName := range s.sortedTargetNames() {
-		if err := s.entries[targetName].TargetStateEntry(umask).Evaluate(); err != nil {
+		targetStateEntry := s.entries[targetName].TargetStateEntry()
+		if err := targetStateEntry.Evaluate(); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (s *SourceState) addPatterns(fs DirReader, ps *PatternSet, path, relPath string) error {
-	data, err := s.executeTemplate(fs, path)
+func (s *SourceState) addPatterns(ps *PatternSet, path, relPath string) error {
+	data, err := s.executeTemplate(path)
 	if err != nil {
 		return err
 	}
@@ -326,16 +381,16 @@ func (s *SourceState) addPatterns(fs DirReader, ps *PatternSet, path, relPath st
 	return nil
 }
 
-func (s *SourceState) addTemplatesDir(fs DirReader, templateDir string) error {
+func (s *SourceState) addTemplatesDir(templateDir string) error {
 	templateDirPrefix := filepath.ToSlash(templateDir) + pathSeparator
-	return vfs.Walk(fs, templateDir, func(templatePath string, info os.FileInfo, err error) error {
+	return vfs.Walk(s.fs, templateDir, func(templatePath string, info os.FileInfo, err error) error {
 		templatePath = filepath.ToSlash(templatePath)
 		if err != nil {
 			return err
 		}
 		switch {
 		case info.Mode().IsRegular():
-			contents, err := fs.ReadFile(templatePath)
+			contents, err := s.fs.ReadFile(templatePath)
 			if err != nil {
 				return err
 			}
@@ -360,8 +415,8 @@ func (s *SourceState) addTemplatesDir(fs DirReader, templateDir string) error {
 	})
 }
 
-func (s *SourceState) executeTemplate(dirReader DirReader, path string) ([]byte, error) {
-	data, err := dirReader.ReadFile(path)
+func (s *SourceState) executeTemplate(path string) ([]byte, error) {
+	data, err := s.fs.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
