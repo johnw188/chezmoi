@@ -146,7 +146,7 @@ func TestSourceStateArchive(t *testing.T) {
 	require.NoError(t, s.Evaluate())
 
 	b := &bytes.Buffer{}
-	destDir := NewTARDestDir(b, tar.Header{}, vfst.DefaultUmask)
+	destDir := NewTARFileSystem(b, tar.Header{}, vfst.DefaultUmask)
 	require.NoError(t, s.ApplyAll(destDir, vfst.DefaultUmask, ""))
 
 	r := tar.NewReader(b)

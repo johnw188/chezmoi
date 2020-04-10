@@ -7,143 +7,143 @@ import (
 	"time"
 )
 
-// A DebugDestDir wraps a DestDir and logs all of the actions it executes.
-type DebugDestDir struct {
-	d FileSystem
+// A DebugFileSystem wraps a FileSystem and logs all of the actions it executes.
+type DebugFileSystem struct {
+	fs FileSystem
 }
 
-// NewDebugDestDir returns a new DebugDestDir.
-func NewDebugDestDir(d FileSystem) *DebugDestDir {
-	return &DebugDestDir{
-		d: d,
+// NewDebugFileSystem returns a new DebugFileSystem.
+func NewDebugFileSystem(fs FileSystem) *DebugFileSystem {
+	return &DebugFileSystem{
+		fs: fs,
 	}
 }
 
-// Chmod implements DestDir.Chmod.
-func (d *DebugDestDir) Chmod(name string, mode os.FileMode) error {
+// Chmod implements FileSystem.Chmod.
+func (fs *DebugFileSystem) Chmod(name string, mode os.FileMode) error {
 	return Debugf("Chmod(%q, 0o%o)", []interface{}{name, mode}, func() error {
-		return d.d.Chmod(name, mode)
+		return fs.fs.Chmod(name, mode)
 	})
 }
 
-// Glob implements DestDir.Glob.
-func (d *DebugDestDir) Glob(name string) ([]string, error) {
+// Glob implements FileSystem.Glob.
+func (fs *DebugFileSystem) Glob(name string) ([]string, error) {
 	var matches []string
 	err := Debugf("Glob(%q)", []interface{}{name}, func() error {
 		var err error
-		matches, err = d.d.Glob(name)
+		matches, err = fs.fs.Glob(name)
 		return err
 	})
 	return matches, err
 }
 
-// IdempotentCmdOutput implements DestDir.IdempotentCmdOutput.
-func (d *DebugDestDir) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
+// IdempotentCmdOutput implements FileSystem.IdempotentCmdOutput.
+func (fs *DebugFileSystem) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
 	var output []byte
 	cmdStr := ShellQuoteArgs(append([]string{cmd.Path}, cmd.Args[1:]...))
 	err := Debugf("IdempotentCmdOutput(%q)", []interface{}{cmdStr}, func() error {
 		var err error
-		output, err = d.d.IdempotentCmdOutput(cmd)
+		output, err = fs.fs.IdempotentCmdOutput(cmd)
 		return err
 	})
 	return output, err
 }
 
-// Lstat implements DestDir.Lstat.
-func (d *DebugDestDir) Lstat(name string) (os.FileInfo, error) {
+// Lstat implements FileSystem.Lstat.
+func (fs *DebugFileSystem) Lstat(name string) (os.FileInfo, error) {
 	var info os.FileInfo
 	err := Debugf("Lstat(%q)", []interface{}{name}, func() error {
 		var err error
-		info, err = d.d.Lstat(name)
+		info, err = fs.fs.Lstat(name)
 		return err
 	})
 	return info, err
 }
 
-// Mkdir implements DestDir.Mkdir.
-func (d *DebugDestDir) Mkdir(name string, perm os.FileMode) error {
+// Mkdir implements FileSystem.Mkdir.
+func (fs *DebugFileSystem) Mkdir(name string, perm os.FileMode) error {
 	return Debugf("Mkdir(%q, 0o%o)", []interface{}{name, perm}, func() error {
-		return d.d.Mkdir(name, perm)
+		return fs.fs.Mkdir(name, perm)
 	})
 }
 
-// ReadDir implements DestDir.ReadDir.
-func (d *DebugDestDir) ReadDir(name string) ([]os.FileInfo, error) {
+// ReadDir implements FileSystem.ReadDir.
+func (fs *DebugFileSystem) ReadDir(name string) ([]os.FileInfo, error) {
 	var infos []os.FileInfo
 	err := Debugf("ReadDir(%q)", []interface{}{name}, func() error {
 		var err error
-		infos, err = d.d.ReadDir(name)
+		infos, err = fs.fs.ReadDir(name)
 		return err
 	})
 	return infos, err
 }
 
-// ReadFile implements DestDir.ReadFile.
-func (d *DebugDestDir) ReadFile(filename string) ([]byte, error) {
+// ReadFile implements FileSystem.ReadFile.
+func (fs *DebugFileSystem) ReadFile(filename string) ([]byte, error) {
 	var data []byte
 	err := Debugf("ReadFile(%q)", []interface{}{filename}, func() error {
 		var err error
-		data, err = d.d.ReadFile(filename)
+		data, err = fs.fs.ReadFile(filename)
 		return err
 	})
 	return data, err
 }
 
-// Readlink implements DestDir.Readlink.
-func (d *DebugDestDir) Readlink(name string) (string, error) {
+// Readlink implements FileSystem.Readlink.
+func (fs *DebugFileSystem) Readlink(name string) (string, error) {
 	var linkname string
 	err := Debugf("Readlink(%q)", []interface{}{name}, func() error {
 		var err error
-		linkname, err = d.d.Readlink(name)
+		linkname, err = fs.fs.Readlink(name)
 		return err
 	})
 	return linkname, err
 }
 
-// RemoveAll implements DestDir.RemoveAll.
-func (d *DebugDestDir) RemoveAll(name string) error {
+// RemoveAll implements FileSystem.RemoveAll.
+func (fs *DebugFileSystem) RemoveAll(name string) error {
 	return Debugf("RemoveAll(%q)", []interface{}{name}, func() error {
-		return d.d.RemoveAll(name)
+		return fs.fs.RemoveAll(name)
 	})
 }
 
-// Rename implements DestDir.Rename.
-func (d *DebugDestDir) Rename(oldpath, newpath string) error {
+// Rename implements FileSystem.Rename.
+func (fs *DebugFileSystem) Rename(oldpath, newpath string) error {
 	return Debugf("Rename(%q, %q)", []interface{}{oldpath, newpath}, func() error {
-		return d.Rename(oldpath, newpath)
+		return fs.Rename(oldpath, newpath)
 	})
 }
 
-// RunCmd implements DestDir.RunCmd.
-func (d *DebugDestDir) RunCmd(cmd *exec.Cmd) error {
+// RunCmd implements FileSystem.RunCmd.
+func (fs *DebugFileSystem) RunCmd(cmd *exec.Cmd) error {
 	cmdStr := ShellQuoteArgs(append([]string{cmd.Path}, cmd.Args[1:]...))
 	return Debugf("Run(%q)", []interface{}{cmdStr}, func() error {
-		return d.d.RunCmd(cmd)
+		return fs.fs.RunCmd(cmd)
 	})
 }
 
-// Stat implements DestDir.Stat.
-func (d *DebugDestDir) Stat(name string) (os.FileInfo, error) {
+// Stat implements FileSystem.Stat.
+func (fs *DebugFileSystem) Stat(name string) (os.FileInfo, error) {
 	var info os.FileInfo
 	err := Debugf("Stat(%q)", []interface{}{name}, func() error {
 		var err error
-		info, err = d.d.Stat(name)
+		info, err = fs.fs.Stat(name)
 		return err
 	})
 	return info, err
 }
 
-// WriteFile implements DestDir.WriteFile.
-func (d *DebugDestDir) WriteFile(name string, data []byte, perm os.FileMode, currData []byte) error {
+// WriteFile implements FileSystem.WriteFile.
+func (fs *DebugFileSystem) WriteFile(name string, data []byte, perm os.FileMode, currData []byte) error {
 	return Debugf("WriteFile(%q, _, 0%o, _)", []interface{}{name, perm}, func() error {
-		return d.d.WriteFile(name, data, perm, currData)
+		return fs.fs.WriteFile(name, data, perm, currData)
 	})
 }
 
-// WriteSymlink implements DestDir.WriteSymlink.
-func (d *DebugDestDir) WriteSymlink(oldname, newname string) error {
+// WriteSymlink implements FileSystem.WriteSymlink.
+func (fs *DebugFileSystem) WriteSymlink(oldname, newname string) error {
 	return Debugf("WriteSymlink(%q, %q)", []interface{}{oldname, newname}, func() error {
-		return d.d.WriteSymlink(oldname, newname)
+		return fs.fs.WriteSymlink(oldname, newname)
 	})
 }
 

@@ -15,138 +15,138 @@ import (
 	"github.com/pkg/diff"
 )
 
-// A VerboseDestDir wraps a DestDir and logs all of the actions it executes and
+// A VerboseFileSystem wraps a FileSystem and logs all of the actions it executes and
 // any errors as pseudo shell commands.
-type VerboseDestDir struct {
-	d               FileSystem
+type VerboseFileSystem struct {
+	fs              FileSystem
 	w               io.Writer
 	colored         bool
 	maxDiffDataSize int
 }
 
-// NewVerboseDestDir returns a new VerboseDestDir.
-func NewVerboseDestDir(w io.Writer, m FileSystem, colored bool, maxDiffDataSize int) *VerboseDestDir {
-	return &VerboseDestDir{
-		d:               m,
+// NewVerboseFileSystem returns a new VerboseFileSystem.
+func NewVerboseFileSystem(w io.Writer, m FileSystem, colored bool, maxDiffDataSize int) *VerboseFileSystem {
+	return &VerboseFileSystem{
+		fs:              m,
 		w:               w,
 		colored:         colored,
 		maxDiffDataSize: maxDiffDataSize,
 	}
 }
 
-// Chmod implements DestDir.Chmod.
-func (d *VerboseDestDir) Chmod(name string, mode os.FileMode) error {
+// Chmod implements FileSystem.Chmod.
+func (fs *VerboseFileSystem) Chmod(name string, mode os.FileMode) error {
 	action := fmt.Sprintf("chmod %o %s", mode, MaybeShellQuote(name))
-	err := d.d.Chmod(name, mode)
+	err := fs.fs.Chmod(name, mode)
 	if err == nil {
-		_, _ = fmt.Fprintln(d.w, action)
+		_, _ = fmt.Fprintln(fs.w, action)
 	} else {
-		_, _ = fmt.Fprintf(d.w, "%s: %v\n", action, err)
+		_, _ = fmt.Fprintf(fs.w, "%s: %v\n", action, err)
 	}
 	return err
 }
 
-// Glob implements DestDir.Glob.
-func (d *VerboseDestDir) Glob(pattern string) ([]string, error) {
-	return d.d.Glob(pattern)
+// Glob implements FileSystem.Glob.
+func (fs *VerboseFileSystem) Glob(pattern string) ([]string, error) {
+	return fs.fs.Glob(pattern)
 }
 
-// IdempotentCmdOutput implements DestDir.IdempotentCmdOutput.
-func (d *VerboseDestDir) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
+// IdempotentCmdOutput implements FileSystem.IdempotentCmdOutput.
+func (fs *VerboseFileSystem) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
 	action := cmdString(cmd)
-	output, err := d.d.IdempotentCmdOutput(cmd)
+	output, err := fs.fs.IdempotentCmdOutput(cmd)
 	if err != nil {
-		_, _ = fmt.Fprintf(d.w, "%s: %v\n", action, err)
+		_, _ = fmt.Fprintf(fs.w, "%s: %v\n", action, err)
 	}
 	return output, err
 }
 
-// Lstat implements DestDir.Lstat.
-func (d *VerboseDestDir) Lstat(name string) (os.FileInfo, error) {
-	return d.d.Lstat(name)
+// Lstat implements FileSystem.Lstat.
+func (fs *VerboseFileSystem) Lstat(name string) (os.FileInfo, error) {
+	return fs.fs.Lstat(name)
 }
 
-// ReadDir implements DestDir.ReadDir.
-func (d *VerboseDestDir) ReadDir(dirname string) ([]os.FileInfo, error) {
-	return d.d.ReadDir(dirname)
+// ReadDir implements FileSystem.ReadDir.
+func (fs *VerboseFileSystem) ReadDir(dirname string) ([]os.FileInfo, error) {
+	return fs.fs.ReadDir(dirname)
 }
 
-// ReadFile implements DestDir.ReadFile.
-func (d *VerboseDestDir) ReadFile(filename string) ([]byte, error) {
-	return d.d.ReadFile(filename)
+// ReadFile implements FileSystem.ReadFile.
+func (fs *VerboseFileSystem) ReadFile(filename string) ([]byte, error) {
+	return fs.fs.ReadFile(filename)
 }
 
-// Readlink implements DestDir.Readlink.
-func (d *VerboseDestDir) Readlink(name string) (string, error) {
-	return d.d.Readlink(name)
+// Readlink implements FileSystem.Readlink.
+func (fs *VerboseFileSystem) Readlink(name string) (string, error) {
+	return fs.fs.Readlink(name)
 }
 
-// Mkdir implements DestDir.Mkdir.
-func (d *VerboseDestDir) Mkdir(name string, perm os.FileMode) error {
+// Mkdir implements FileSystem.Mkdir.
+func (fs *VerboseFileSystem) Mkdir(name string, perm os.FileMode) error {
 	action := fmt.Sprintf("mkdir -m %o %s", perm, MaybeShellQuote(name))
-	err := d.d.Mkdir(name, perm)
+	err := fs.fs.Mkdir(name, perm)
 	if err == nil {
-		_, _ = fmt.Fprintln(d.w, action)
+		_, _ = fmt.Fprintln(fs.w, action)
 	} else {
-		_, _ = fmt.Fprintf(d.w, "%s: %v\n", action, err)
+		_, _ = fmt.Fprintf(fs.w, "%s: %v\n", action, err)
 	}
 	return err
 }
 
-// RemoveAll implements DestDir.RemoveAll.
-func (d *VerboseDestDir) RemoveAll(name string) error {
+// RemoveAll implements FileSystem.RemoveAll.
+func (fs *VerboseFileSystem) RemoveAll(name string) error {
 	action := fmt.Sprintf("rm -rf %s", MaybeShellQuote(name))
-	err := d.d.RemoveAll(name)
+	err := fs.fs.RemoveAll(name)
 	if err == nil {
-		_, _ = fmt.Fprintln(d.w, action)
+		_, _ = fmt.Fprintln(fs.w, action)
 	} else {
-		_, _ = fmt.Fprintf(d.w, "%s: %v\n", action, err)
+		_, _ = fmt.Fprintf(fs.w, "%s: %v\n", action, err)
 	}
 	return err
 }
 
-// Rename implements DestDir.Rename.
-func (d *VerboseDestDir) Rename(oldpath, newpath string) error {
+// Rename implements FileSystem.Rename.
+func (fs *VerboseFileSystem) Rename(oldpath, newpath string) error {
 	action := fmt.Sprintf("mv %s %s", MaybeShellQuote(oldpath), MaybeShellQuote(newpath))
-	err := d.d.Rename(oldpath, newpath)
+	err := fs.fs.Rename(oldpath, newpath)
 	if err == nil {
-		_, _ = fmt.Fprintln(d.w, action)
+		_, _ = fmt.Fprintln(fs.w, action)
 	} else {
-		_, _ = fmt.Fprintf(d.w, "%s: %v\n", action, err)
+		_, _ = fmt.Fprintf(fs.w, "%s: %v\n", action, err)
 	}
 	return err
 }
 
-// RunCmd implements DestDir.RunCmd.
-func (d *VerboseDestDir) RunCmd(cmd *exec.Cmd) error {
+// RunCmd implements FileSystem.RunCmd.
+func (fs *VerboseFileSystem) RunCmd(cmd *exec.Cmd) error {
 	action := cmdString(cmd)
-	err := d.d.RunCmd(cmd)
+	err := fs.fs.RunCmd(cmd)
 	if err == nil {
-		_, _ = fmt.Fprintln(d.w, action)
+		_, _ = fmt.Fprintln(fs.w, action)
 	} else {
-		_, _ = fmt.Fprintf(d.w, "%s: %v\n", action, err)
+		_, _ = fmt.Fprintf(fs.w, "%s: %v\n", action, err)
 	}
 	return err
 }
 
-// Stat implements DestDir.Stat.
-func (d *VerboseDestDir) Stat(name string) (os.FileInfo, error) {
-	return d.d.Stat(name)
+// Stat implements FileSystem.Stat.
+func (fs *VerboseFileSystem) Stat(name string) (os.FileInfo, error) {
+	return fs.fs.Stat(name)
 }
 
-// WriteFile implements DestDir.WriteFile.
-func (d *VerboseDestDir) WriteFile(name string, data []byte, perm os.FileMode, currData []byte) error {
+// WriteFile implements FileSystem.WriteFile.
+func (fs *VerboseFileSystem) WriteFile(name string, data []byte, perm os.FileMode, currData []byte) error {
 	action := fmt.Sprintf("install -m %o /dev/null %s", perm, MaybeShellQuote(name))
-	err := d.d.WriteFile(name, data, perm, currData)
+	err := fs.fs.WriteFile(name, data, perm, currData)
 	if err == nil {
-		_, _ = fmt.Fprintln(d.w, action)
+		_, _ = fmt.Fprintln(fs.w, action)
 		// Don't print diffs if either file is binary.
 		if isBinary(currData) || isBinary(data) {
 			return nil
 		}
 		// Don't print diffs if either file is too large.
-		if d.maxDiffDataSize != 0 {
-			if len(currData) > d.maxDiffDataSize || len(data) > d.maxDiffDataSize {
+		if fs.maxDiffDataSize != 0 {
+			if len(currData) > fs.maxDiffDataSize || len(data) > fs.maxDiffDataSize {
 				return nil
 			}
 		}
@@ -166,26 +166,26 @@ func (d *VerboseDestDir) WriteFile(name string, data []byte, perm os.FileMode, c
 				path.Join("b", name),
 			),
 		}
-		if d.colored {
+		if fs.colored {
 			opts = append(opts, diff.TerminalColor())
 		}
-		if _, err := e.WriteUnified(d.w, ab, opts...); err != nil {
+		if _, err := e.WriteUnified(fs.w, ab, opts...); err != nil {
 			return err
 		}
 	} else {
-		_, _ = fmt.Fprintf(d.w, "%s: %v\n", action, err)
+		_, _ = fmt.Fprintf(fs.w, "%s: %v\n", action, err)
 	}
 	return err
 }
 
-// WriteSymlink implements DestDir.WriteSymlink.
-func (d *VerboseDestDir) WriteSymlink(oldname, newname string) error {
+// WriteSymlink implements FileSystem.WriteSymlink.
+func (fs *VerboseFileSystem) WriteSymlink(oldname, newname string) error {
 	action := fmt.Sprintf("ln -sf %s %s", MaybeShellQuote(oldname), MaybeShellQuote(newname))
-	err := d.d.WriteSymlink(oldname, newname)
+	err := fs.fs.WriteSymlink(oldname, newname)
 	if err == nil {
-		_, _ = fmt.Fprintln(d.w, action)
+		_, _ = fmt.Fprintln(fs.w, action)
 	} else {
-		_, _ = fmt.Fprintf(d.w, "%s: %v\n", action, err)
+		_, _ = fmt.Fprintf(fs.w, "%s: %v\n", action, err)
 	}
 	return err
 }

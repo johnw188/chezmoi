@@ -1,3 +1,3 @@
 package chezmoi
 
-var _ FileSystemReader = &EmptyDestDir{}
+var _ FileSystemReader = &EmptyFileSystemReader{}

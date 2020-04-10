@@ -2,35 +2,35 @@ package chezmoi
 
 import "os"
 
-// An EmptyDestDir represents an empty DestDir.
-type EmptyDestDir struct{}
+// An EmptyFileSystemReader represents an empty FileSystem.
+type EmptyFileSystemReader struct{}
 
-// Glob implements DestDir.Glob.
-func (*EmptyDestDir) Glob(pattern string) ([]string, error) {
+// Glob implements FileSystem.Glob.
+func (*EmptyFileSystemReader) Glob(pattern string) ([]string, error) {
 	return nil, nil
 }
 
-// Lstat implements DestDir.Lstat.
-func (*EmptyDestDir) Lstat(name string) (os.FileInfo, error) {
+// Lstat implements FileSystem.Lstat.
+func (*EmptyFileSystemReader) Lstat(name string) (os.FileInfo, error) {
 	return nil, os.ErrNotExist
 }
 
-// ReadDir implements DestDir.ReadDir.
-func (*EmptyDestDir) ReadDir(dirname string) ([]os.FileInfo, error) {
+// ReadDir implements FileSystem.ReadDir.
+func (*EmptyFileSystemReader) ReadDir(dirname string) ([]os.FileInfo, error) {
 	return nil, os.ErrNotExist
 }
 
-// ReadFile implements DestDir.ReadFile.
-func (*EmptyDestDir) ReadFile(filename string) ([]byte, error) {
+// ReadFile implements FileSystem.ReadFile.
+func (*EmptyFileSystemReader) ReadFile(filename string) ([]byte, error) {
 	return nil, os.ErrNotExist
 }
 
-// Readlink implements DestDir.Readlink.
-func (*EmptyDestDir) Readlink(name string) (string, error) {
+// Readlink implements FileSystem.Readlink.
+func (*EmptyFileSystemReader) Readlink(name string) (string, error) {
 	return "", os.ErrNotExist
 }
 
-// Stat implements DestDir.Stat.
-func (*EmptyDestDir) Stat(name string) (os.FileInfo, error) {
+// Stat implements FileSystem.Stat.
+func (*EmptyFileSystemReader) Stat(name string) (os.FileInfo, error) {
 	return nil, os.ErrNotExist
 }

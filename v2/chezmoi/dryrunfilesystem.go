@@ -5,85 +5,85 @@ import (
 	"os/exec"
 )
 
-// DryRunDestDir is an DestDir that reads from, but does not write to, to a
-// wrapped DestDir.
-type DryRunDestDir struct {
-	d FileSystem
+// DryRunFileSystem is an FileSystem that reads from, but does not write to, to
+// a wrapped FileSystem.
+type DryRunFileSystem struct {
+	fs FileSystem
 }
 
-// NewDryRunDestDir returns a new DryRunDestDir that wraps m.
-func NewDryRunDestDir(d FileSystem) *DryRunDestDir {
-	return &DryRunDestDir{
-		d: d,
+// NewDryRunFileSystem returns a new DryRunFileSystem that wraps fs.
+func NewDryRunFileSystem(fs FileSystem) *DryRunFileSystem {
+	return &DryRunFileSystem{
+		fs: fs,
 	}
 }
 
-// Chmod implements DestDir.Chmod.
-func (d *DryRunDestDir) Chmod(name string, mode os.FileMode) error {
+// Chmod implements FileSystem.Chmod.
+func (fs *DryRunFileSystem) Chmod(name string, mode os.FileMode) error {
 	return nil
 }
 
-// Glob implements DestDir.Glob.
-func (d *DryRunDestDir) Glob(pattern string) ([]string, error) {
-	return d.d.Glob(pattern)
+// Glob implements FileSystem.Glob.
+func (fs *DryRunFileSystem) Glob(pattern string) ([]string, error) {
+	return fs.fs.Glob(pattern)
 }
 
-// IdempotentCmdOutput implements DestDir.IdempotentCmdOutput.
-func (d *DryRunDestDir) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
-	return d.d.IdempotentCmdOutput(cmd)
+// IdempotentCmdOutput implements FileSystem.IdempotentCmdOutput.
+func (fs *DryRunFileSystem) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
+	return fs.fs.IdempotentCmdOutput(cmd)
 }
 
-// Lstat implements DestDir.Lstat.
-func (d *DryRunDestDir) Lstat(name string) (os.FileInfo, error) {
-	return d.d.Stat(name)
+// Lstat implements FileSystem.Lstat.
+func (fs *DryRunFileSystem) Lstat(name string) (os.FileInfo, error) {
+	return fs.fs.Stat(name)
 }
 
-// Mkdir implements DestDir.Mkdir.
-func (d *DryRunDestDir) Mkdir(name string, perm os.FileMode) error {
+// Mkdir implements FileSystem.Mkdir.
+func (fs *DryRunFileSystem) Mkdir(name string, perm os.FileMode) error {
 	return nil
 }
 
-// ReadDir implements DestDir.ReadDir.
-func (d *DryRunDestDir) ReadDir(dirname string) ([]os.FileInfo, error) {
-	return d.d.ReadDir(dirname)
+// ReadDir implements FileSystem.ReadDir.
+func (fs *DryRunFileSystem) ReadDir(dirname string) ([]os.FileInfo, error) {
+	return fs.fs.ReadDir(dirname)
 }
 
-// ReadFile implements DestDir.ReadFile.
-func (d *DryRunDestDir) ReadFile(filename string) ([]byte, error) {
-	return d.d.ReadFile(filename)
+// ReadFile implements FileSystem.ReadFile.
+func (fs *DryRunFileSystem) ReadFile(filename string) ([]byte, error) {
+	return fs.fs.ReadFile(filename)
 }
 
-// Readlink implements DestDir.Readlink.
-func (d *DryRunDestDir) Readlink(name string) (string, error) {
-	return d.d.Readlink(name)
+// Readlink implements FileSystem.Readlink.
+func (fs *DryRunFileSystem) Readlink(name string) (string, error) {
+	return fs.fs.Readlink(name)
 }
 
-// RemoveAll implements DestDir.RemoveAll.
-func (d *DryRunDestDir) RemoveAll(string) error {
+// RemoveAll implements FileSystem.RemoveAll.
+func (fs *DryRunFileSystem) RemoveAll(string) error {
 	return nil
 }
 
-// Rename implements DestDir.Rename.
-func (d *DryRunDestDir) Rename(oldpath, newpath string) error {
+// Rename implements FileSystem.Rename.
+func (fs *DryRunFileSystem) Rename(oldpath, newpath string) error {
 	return nil
 }
 
-// RunCmd implements DestDir.RunCmd.
-func (d *DryRunDestDir) RunCmd(cmd *exec.Cmd) error {
+// RunCmd implements FileSystem.RunCmd.
+func (fs *DryRunFileSystem) RunCmd(cmd *exec.Cmd) error {
 	return nil
 }
 
-// Stat implements DestDir.Stat.
-func (d *DryRunDestDir) Stat(name string) (os.FileInfo, error) {
-	return d.d.Stat(name)
+// Stat implements FileSystem.Stat.
+func (fs *DryRunFileSystem) Stat(name string) (os.FileInfo, error) {
+	return fs.fs.Stat(name)
 }
 
-// WriteFile implements DestDir.WriteFile.
-func (d *DryRunDestDir) WriteFile(string, []byte, os.FileMode, []byte) error {
+// WriteFile implements FileSystem.WriteFile.
+func (fs *DryRunFileSystem) WriteFile(string, []byte, os.FileMode, []byte) error {
 	return nil
 }
 
-// WriteSymlink implements DestDir.WriteSymlink.
-func (d *DryRunDestDir) WriteSymlink(string, string) error {
+// WriteSymlink implements FileSystem.WriteSymlink.
+func (fs *DryRunFileSystem) WriteSymlink(string, string) error {
 	return nil
 }

@@ -1,3 +1,3 @@
 package chezmoi
 
-var _ FileSystem = &TARDestDir{}
+var _ FileSystem = &TARFileSystem{}

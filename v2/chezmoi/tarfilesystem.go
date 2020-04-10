@@ -10,84 +10,84 @@ import (
 	"time"
 )
 
-// A TARDestDir is a DestDir that writes to a TAR archive.
-type TARDestDir struct {
-	*EmptyDestDir
+// A TARFileSystem is a FileSystem that writes to a TAR archive.
+type TARFileSystem struct {
+	*EmptyFileSystemReader
 	w              *tar.Writer
 	headerTemplate tar.Header
 	umask          os.FileMode
 }
 
-// NewTARDestDir returns a new TARDestDir that writes a TAR file to w.
-func NewTARDestDir(w io.Writer, headerTemplate tar.Header, umask os.FileMode) *TARDestDir {
-	return &TARDestDir{
+// NewTARFileSystem returns a new TARFileSystem that writes a TAR file to w.
+func NewTARFileSystem(w io.Writer, headerTemplate tar.Header, umask os.FileMode) *TARFileSystem {
+	return &TARFileSystem{
 		w:              tar.NewWriter(w),
 		headerTemplate: headerTemplate,
 		umask:          umask,
 	}
 }
 
-// Chmod implements DestDir.Chmod.
-func (d *TARDestDir) Chmod(name string, mode os.FileMode) error {
+// Chmod implements FileSystem.Chmod.
+func (fs *TARFileSystem) Chmod(name string, mode os.FileMode) error {
 	return os.ErrPermission
 }
 
 // Close closes m.
-func (d *TARDestDir) Close() error {
-	return d.w.Close()
+func (fs *TARFileSystem) Close() error {
+	return fs.w.Close()
 }
 
-// IdempotentCmdOutput implements DestDir.IdempotentCmdOutput.
-func (d *TARDestDir) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
+// IdempotentCmdOutput implements FileSystem.IdempotentCmdOutput.
+func (fs *TARFileSystem) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
 	return cmd.Output()
 }
 
-// Mkdir implements DestDir.Mkdir.
-func (d *TARDestDir) Mkdir(name string, perm os.FileMode) error {
-	header := d.headerTemplate
+// Mkdir implements FileSystem.Mkdir.
+func (fs *TARFileSystem) Mkdir(name string, perm os.FileMode) error {
+	header := fs.headerTemplate
 	header.Typeflag = tar.TypeDir
 	header.Name = name
-	header.Mode = int64(perm &^ d.umask)
-	return d.w.WriteHeader(&header)
+	header.Mode = int64(perm &^ fs.umask)
+	return fs.w.WriteHeader(&header)
 }
 
-// RemoveAll implements DestDir.RemoveAll.
-func (d *TARDestDir) RemoveAll(name string) error {
+// RemoveAll implements FileSystem.RemoveAll.
+func (fs *TARFileSystem) RemoveAll(name string) error {
 	return os.ErrPermission
 }
 
-// Rename implements DestDir.Rename.
-func (d *TARDestDir) Rename(oldpath, newpath string) error {
+// Rename implements FileSystem.Rename.
+func (fs *TARFileSystem) Rename(oldpath, newpath string) error {
 	return os.ErrPermission
 }
 
-// RunCmd implements DestDir.RunCmd.
-func (d *TARDestDir) RunCmd(cmd *exec.Cmd) error {
+// RunCmd implements FileSystem.RunCmd.
+func (fs *TARFileSystem) RunCmd(cmd *exec.Cmd) error {
 	// FIXME need to work out what to do with scripts
 	return nil
 }
 
-// WriteFile implements DestDir.WriteFile.
-func (d *TARDestDir) WriteFile(filename string, data []byte, perm os.FileMode, currData []byte) error {
-	header := d.headerTemplate
+// WriteFile implements FileSystem.WriteFile.
+func (fs *TARFileSystem) WriteFile(filename string, data []byte, perm os.FileMode, currData []byte) error {
+	header := fs.headerTemplate
 	header.Typeflag = tar.TypeReg
 	header.Name = filename
 	header.Size = int64(len(data))
-	header.Mode = int64(perm &^ d.umask)
-	if err := d.w.WriteHeader(&header); err != nil {
+	header.Mode = int64(perm &^ fs.umask)
+	if err := fs.w.WriteHeader(&header); err != nil {
 		return err
 	}
-	_, err := d.w.Write(data)
+	_, err := fs.w.Write(data)
 	return err
 }
 
-// WriteSymlink implements DestDir.WriteSymlink.
-func (d *TARDestDir) WriteSymlink(oldname, newname string) error {
-	header := d.headerTemplate
+// WriteSymlink implements FileSystem.WriteSymlink.
+func (fs *TARFileSystem) WriteSymlink(oldname, newname string) error {
+	header := fs.headerTemplate
 	header.Typeflag = tar.TypeSymlink
 	header.Name = newname
 	header.Linkname = oldname
-	return d.w.WriteHeader(&header)
+	return fs.w.WriteHeader(&header)
 }
 
 // TARHeaderTemplate returns a tar.Header template populated with the current

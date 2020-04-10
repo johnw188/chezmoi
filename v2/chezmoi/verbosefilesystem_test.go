@@ -1,3 +1,3 @@
 package chezmoi
 
-var _ FileSystem = &VerboseDestDir{}
+var _ FileSystem = &VerboseFileSystem{}
