@@ -1,7 +1,5 @@
 package chezmoi
 
-// FIXME UmaskdestDir and add PermEqual method?
-
 import (
 	"bytes"
 	"io/ioutil"
@@ -12,7 +10,7 @@ import (
 
 // A TargetStateEntry represents the state of an entry in the target state.
 type TargetStateEntry interface {
-	Apply(destDir FileSystem, destStateEntry DestStateEntry) error
+	Apply(fs FileSystem, destStateEntry DestStateEntry) error
 	Equal(destStateEntry DestStateEntry) (bool, error)
 	Evaluate() error
 }
@@ -45,11 +43,11 @@ type TargetStateSymlink struct {
 }
 
 // Apply updates destStateEntry to match t.
-func (t *TargetStateAbsent) Apply(destDir FileSystem, destStateEntry DestStateEntry) error {
+func (t *TargetStateAbsent) Apply(fs FileSystem, destStateEntry DestStateEntry) error {
 	if _, ok := destStateEntry.(*DestStateAbsent); ok {
 		return nil
 	}
-	return destDir.RemoveAll(destStateEntry.Path())
+	return fs.RemoveAll(destStateEntry.Path())
 }
 
 // Equal returns true if destStateEntry matches t.
@@ -64,17 +62,17 @@ func (t *TargetStateAbsent) Evaluate() error {
 }
 
 // Apply updates destStateEntry to match t. It does not recurse.
-func (t *TargetStateDir) Apply(destDir FileSystem, destStateEntry DestStateEntry) error {
+func (t *TargetStateDir) Apply(fs FileSystem, destStateEntry DestStateEntry) error {
 	if destStateDir, ok := destStateEntry.(*DestStateDir); ok {
 		if destStateDir.perm == t.perm {
 			return nil
 		}
-		return destDir.Chmod(destStateDir.Path(), t.perm)
+		return fs.Chmod(destStateDir.Path(), t.perm)
 	}
-	if err := destStateEntry.Remove(destDir); err != nil {
+	if err := destStateEntry.Remove(fs); err != nil {
 		return err
 	}
-	return destDir.Mkdir(destStateEntry.Path(), t.perm)
+	return fs.Mkdir(destStateEntry.Path(), t.perm)
 }
 
 // Equal returns true if destStateEntry matches t. It does not recurse.
@@ -92,7 +90,7 @@ func (t *TargetStateDir) Evaluate() error {
 }
 
 // Apply updates destStateEntry to match t.
-func (t *TargetStateFile) Apply(destDir FileSystem, destStateEntry DestStateEntry) error {
+func (t *TargetStateFile) Apply(fs FileSystem, destStateEntry DestStateEntry) error {
 	var destContents []byte
 	destIsFileAndPermMatches := false
 	if destStateFile, ok := destStateEntry.(*DestStateFile); ok {
@@ -111,7 +109,7 @@ func (t *TargetStateFile) Apply(destDir FileSystem, destStateEntry DestStateEntr
 			if destStateFile.perm == t.perm {
 				return nil
 			}
-			return destDir.Chmod(destStateFile.Path(), t.perm)
+			return fs.Chmod(destStateFile.Path(), t.perm)
 		}
 		destContents, err = destStateFile.Contents()
 		if err != nil {
@@ -127,18 +125,18 @@ func (t *TargetStateFile) Apply(destDir FileSystem, destStateEntry DestStateEntr
 	// state then we can rely on destDir.WriteFile to replace the file, possibly
 	// atomically. Otherwise we must remove the destination entry before writing
 	// the new file. If the destination entry is not a file then it must be
-	// removed as destDir.WriteFile will not overwrite non-files. If the
+	// removed as fs.WriteFile will not overwrite non-files. If the
 	// destination entry is a file but the permissions do not matchq then we
 	// must remove the file first because there is no way atomically update the
 	// permissions and the content simultaneously.
 	//
 	// FIXME update destDir.WriteFile to truncate, update perms, then write content
 	if !destIsFileAndPermMatches {
-		if err := destStateEntry.Remove(destDir); err != nil {
+		if err := destStateEntry.Remove(fs); err != nil {
 			return err
 		}
 	}
-	return destDir.WriteFile(destStateEntry.Path(), contents, t.perm, destContents)
+	return fs.WriteFile(destStateEntry.Path(), contents, t.perm, destContents)
 }
 
 // Equal returns true if destStateEntry matches t.
@@ -169,7 +167,7 @@ func (t *TargetStateFile) Evaluate() error {
 
 // Apply does nothing for scripts.
 // FIXME maybe this should call Run?
-func (t *TargetStateScript) Apply(destDir FileSystem, destStateEntry DestStateEntry) error {
+func (t *TargetStateScript) Apply(fs FileSystem, destStateEntry DestStateEntry) error {
 	return nil
 }
 
@@ -187,7 +185,7 @@ func (t *TargetStateScript) Evaluate() error {
 }
 
 // Run runs t.
-func (t *TargetStateScript) Run(destDir FileSystem) error {
+func (t *TargetStateScript) Run(fs FileSystem) error {
 	contents, err := t.Contents()
 	if err != nil {
 		return err
@@ -229,7 +227,7 @@ func (t *TargetStateScript) Run(destDir FileSystem) error {
 	c.Stdin = os.Stdin
 	c.Stdout = os.Stdout
 	c.Stderr = os.Stderr
-	if err := destDir.RunCmd(c); err != nil { // FIXME
+	if err := fs.RunCmd(c); err != nil { // FIXME
 		return err
 	}
 
@@ -239,7 +237,7 @@ func (t *TargetStateScript) Run(destDir FileSystem) error {
 }
 
 // Apply updates destStateEntry to match t.
-func (t *TargetStateSymlink) Apply(destDir FileSystem, destStateEntry DestStateEntry) error {
+func (t *TargetStateSymlink) Apply(fs FileSystem, destStateEntry DestStateEntry) error {
 	if destStateSymlink, ok := destStateEntry.(*DestStateSymlink); ok {
 		destLinkname, err := destStateSymlink.Linkname()
 		if err != nil {
@@ -257,10 +255,10 @@ func (t *TargetStateSymlink) Apply(destDir FileSystem, destStateEntry DestStateE
 	if err != nil {
 		return err
 	}
-	if err := destStateEntry.Remove(destDir); err != nil {
+	if err := destStateEntry.Remove(fs); err != nil {
 		return err
 	}
-	return destDir.WriteSymlink(linkname, destStateEntry.Path())
+	return fs.WriteSymlink(linkname, destStateEntry.Path())
 }
 
 // Equal returns true if destStateEntry matches t.

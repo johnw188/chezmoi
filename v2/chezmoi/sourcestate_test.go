@@ -146,8 +146,8 @@ func TestSourceStateArchive(t *testing.T) {
 	require.NoError(t, s.Evaluate())
 
 	b := &bytes.Buffer{}
-	destDir := NewTARFileSystem(b, tar.Header{}, vfst.DefaultUmask)
-	require.NoError(t, s.ApplyAll(destDir, vfst.DefaultUmask, ""))
+	tarFS := NewTARFileSystem(b, tar.Header{}, vfst.DefaultUmask)
+	require.NoError(t, s.ApplyAll(tarFS, vfst.DefaultUmask, ""))
 
 	r := tar.NewReader(b)
 	for _, tc := range []struct {
@@ -663,7 +663,7 @@ func TestSourceStateRemove(t *testing.T) {
 			require.NoError(t, s.Read())
 			require.NoError(t, s.Evaluate())
 
-			require.NoError(t, s.Remove(NewFSDestDir(fs), vfst.DefaultUmask, "/home/user"))
+			require.NoError(t, s.Remove(NewFSDestDir(fs), "/home/user"))
 
 			vfst.RunTests(t, fs, "", tc.tests)
 		})

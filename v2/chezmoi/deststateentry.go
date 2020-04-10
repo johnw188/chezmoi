@@ -9,7 +9,7 @@ import (
 // An DestStateEntry represents the state of an entry in the destination state.
 type DestStateEntry interface {
 	Path() string
-	Remove(destDir FileSystem) error
+	Remove(fs FileSystem) error
 }
 
 // A DestStateAbsent represents the absence of an entry in the destination
@@ -37,10 +37,9 @@ type DestStateSymlink struct {
 	*lazyLinkname
 }
 
-// NewDestStateEntry returns a new DestStateEntry populated with path from
-// destDirReader.
-func NewDestStateEntry(destDirReader FileSystemReader, path string) (DestStateEntry, error) {
-	info, err := destDirReader.Lstat(path)
+// NewDestStateEntry returns a new DestStateEntry populated with path from fs.
+func NewDestStateEntry(fs FileSystemReader, path string) (DestStateEntry, error) {
+	info, err := fs.Lstat(path)
 	switch {
 	case os.IsNotExist(err):
 		return &DestStateAbsent{
@@ -56,7 +55,7 @@ func NewDestStateEntry(destDirReader FileSystemReader, path string) (DestStateEn
 			perm: info.Mode() & os.ModePerm,
 			lazyContents: &lazyContents{
 				contentsFunc: func() ([]byte, error) {
-					return destDirReader.ReadFile(path)
+					return fs.ReadFile(path)
 				},
 			},
 		}, nil
@@ -70,7 +69,7 @@ func NewDestStateEntry(destDirReader FileSystemReader, path string) (DestStateEn
 			path: path,
 			lazyLinkname: &lazyLinkname{
 				linknameFunc: func() (string, error) {
-					return destDirReader.Readlink(path)
+					return fs.Readlink(path)
 				},
 			},
 		}, nil
@@ -88,7 +87,7 @@ func (d *DestStateAbsent) Path() string {
 }
 
 // Remove removes d.
-func (d *DestStateAbsent) Remove(destDir FileSystem) error {
+func (d *DestStateAbsent) Remove(fs FileSystem) error {
 	return nil
 }
 
@@ -98,8 +97,8 @@ func (d *DestStateDir) Path() string {
 }
 
 // Remove removes d.
-func (d *DestStateDir) Remove(destDir FileSystem) error {
-	return destDir.RemoveAll(d.path)
+func (d *DestStateDir) Remove(fs FileSystem) error {
+	return fs.RemoveAll(d.path)
 }
 
 // Path returns d's path.
@@ -108,8 +107,8 @@ func (d *DestStateFile) Path() string {
 }
 
 // Remove removes d.
-func (d *DestStateFile) Remove(destDir FileSystem) error {
-	return destDir.RemoveAll(d.path)
+func (d *DestStateFile) Remove(fs FileSystem) error {
+	return fs.RemoveAll(d.path)
 }
 
 // Path returns d's path.
@@ -118,6 +117,6 @@ func (d *DestStateSymlink) Path() string {
 }
 
 // Remove removes d.
-func (d *DestStateSymlink) Remove(destDir FileSystem) error {
-	return destDir.RemoveAll(d.path)
+func (d *DestStateSymlink) Remove(fs FileSystem) error {
+	return fs.RemoveAll(d.path)
 }
