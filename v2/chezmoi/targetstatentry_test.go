@@ -120,7 +120,7 @@ func TestTargetStateEntryApplyAndEqual(t *testing.T) {
 					require.NoError(t, err)
 
 					// Apply the target state entry.
-					require.NoError(t, tc1.targetStateEntry.Apply(NewFSDestDir(fs), destStateEntry))
+					require.NoError(t, tc1.targetStateEntry.Apply(NewFSFileSystem(fs), destStateEntry))
 
 					// Verify that the destination state entry matches the
 					// desired state.

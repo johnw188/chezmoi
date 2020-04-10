@@ -107,12 +107,12 @@ func TestSourceStateApplyAll(t *testing.T) {
 			defer cleanup()
 
 			s := NewSourceState(
-				WithFileSystem(NewFSDestDir(fs)),
+				WithFileSystem(NewFSFileSystem(fs)),
 				WithSourcePath("/home/user/.local/share/chezmoi"),
 			)
 			require.NoError(t, s.Read())
 			require.NoError(t, s.Evaluate())
-			require.NoError(t, s.ApplyAll(NewFSDestDir(fs), vfst.DefaultUmask, "/home/user"))
+			require.NoError(t, s.ApplyAll(NewFSFileSystem(fs), vfst.DefaultUmask, "/home/user"))
 
 			vfst.RunTests(t, fs, "", tc.tests...)
 		})
@@ -139,7 +139,7 @@ func TestSourceStateArchive(t *testing.T) {
 	defer cleanup()
 
 	s := NewSourceState(
-		WithFileSystem(NewFSDestDir(fs)),
+		WithFileSystem(NewFSFileSystem(fs)),
 		WithSourcePath("/home/user/.local/share/chezmoi"),
 	)
 	require.NoError(t, s.Read())
@@ -522,7 +522,7 @@ func TestSourceStateRead(t *testing.T) {
 			defer cleanup()
 
 			sourceStateOptions := []SourceStateOption{
-				WithFileSystem(NewFSDestDir(fs)),
+				WithFileSystem(NewFSFileSystem(fs)),
 				WithSourcePath("/home/user/.local/share/chezmoi"),
 			}
 			sourceStateOptions = append(sourceStateOptions, tc.sourceStateOptions...)
@@ -657,13 +657,13 @@ func TestSourceStateRemove(t *testing.T) {
 			defer cleanup()
 
 			s := NewSourceState(
-				WithFileSystem(NewFSDestDir(fs)),
+				WithFileSystem(NewFSFileSystem(fs)),
 				WithSourcePath("/home/user/.local/share/chezmoi"),
 			)
 			require.NoError(t, s.Read())
 			require.NoError(t, s.Evaluate())
 
-			require.NoError(t, s.Remove(NewFSDestDir(fs), "/home/user"))
+			require.NoError(t, s.Remove(NewFSFileSystem(fs), "/home/user"))
 
 			vfst.RunTests(t, fs, "", tc.tests)
 		})
