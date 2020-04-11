@@ -29,37 +29,37 @@ func NewFSFileSystem(fs vfs.FS) *FSFileSystem {
 }
 
 // IdempotentCmdOutput implements FileSystem.IdempotentCmdOutput.
-func (d *FSFileSystem) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
+func (fs *FSFileSystem) IdempotentCmdOutput(cmd *exec.Cmd) ([]byte, error) {
 	return cmd.Output()
 }
 
 // RunCmd implements FileSystem.RunCmd.
-func (d *FSFileSystem) RunCmd(cmd *exec.Cmd) error {
+func (fs *FSFileSystem) RunCmd(cmd *exec.Cmd) error {
 	return cmd.Run()
 }
 
 // WriteSymlink implements FileSystem.WriteSymlink.
-func (d *FSFileSystem) WriteSymlink(oldname, newname string) error {
+func (fs *FSFileSystem) WriteSymlink(oldname, newname string) error {
 	// Special case: if writing to the real filesystem, use
 	// github.com/google/renameio.
-	if d.FS == vfs.OSFS {
+	if fs.FS == vfs.OSFS {
 		return renameio.Symlink(oldname, newname)
 	}
-	if err := d.FS.RemoveAll(newname); err != nil && !os.IsNotExist(err) {
+	if err := fs.FS.RemoveAll(newname); err != nil && !os.IsNotExist(err) {
 		return err
 	}
-	return d.FS.Symlink(oldname, newname)
+	return fs.FS.Symlink(oldname, newname)
 }
 
 // WriteFile implements FileSystem.WriteFile.
-func (d *FSFileSystem) WriteFile(name string, data []byte, perm os.FileMode, currData []byte) error {
+func (fs *FSFileSystem) WriteFile(filename string, data []byte, perm os.FileMode, currData []byte) error {
 	// Special case: if writing to the real filesystem on a non-Windows system,
 	// use github.com/google/renameio.
-	if d.FS == vfs.OSFS && runtime.GOOS != "windows" {
-		dir := path.Dir(name)
-		dev, ok := d.devCache[dir]
+	if fs.FS == vfs.OSFS && runtime.GOOS != "windows" {
+		dir := path.Dir(filename)
+		dev, ok := fs.devCache[dir]
 		if !ok {
-			info, err := d.Stat(dir)
+			info, err := fs.Stat(dir)
 			if err != nil {
 				return err
 			}
@@ -68,14 +68,14 @@ func (d *FSFileSystem) WriteFile(name string, data []byte, perm os.FileMode, cur
 				return errors.New("os.FileInfo.Sys() cannot be converted to a *syscall.Stat_t")
 			}
 			dev = uint(statT.Dev)
-			d.devCache[dir] = dev
+			fs.devCache[dir] = dev
 		}
-		tempDir, ok := d.tempDirCache[dev]
+		tempDir, ok := fs.tempDirCache[dev]
 		if !ok {
 			tempDir = renameio.TempDir(dir)
-			d.tempDirCache[dev] = tempDir
+			fs.tempDirCache[dev] = tempDir
 		}
-		t, err := renameio.TempFile(tempDir, name)
+		t, err := renameio.TempFile(tempDir, filename)
 		if err != nil {
 			return err
 		}
@@ -90,5 +90,34 @@ func (d *FSFileSystem) WriteFile(name string, data []byte, perm os.FileMode, cur
 		}
 		return t.CloseAtomicallyReplace()
 	}
-	return d.FS.WriteFile(name, data, perm)
+
+	// ioutil.WriteFile only sets the permissions when creating a new file. We
+	// need to ensure permissions, so we use our own implementation.
+
+	// Create a new file, or truncate any existing one.
+	f, err := fs.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, perm)
+	if err != nil {
+		return err
+	}
+
+	// From now on, we continue to the end of the function to ensure that
+	// f.Close() gets called so we don't leak any file descriptors.
+
+	// Set permissions after truncation but before writing any data, in case the
+	// file contained private data before, but before writing the new contents,
+	// in case the contents contain private data after.
+	err = f.Chmod(perm)
+
+	// If everything is OK so far, write the data.
+	if err == nil {
+		_, err = f.Write(data)
+	}
+
+	// Always call f.Close(), and overwrite the error if so far there is none.
+	if err1 := f.Close(); err == nil {
+		err = err1
+	}
+
+	// Return the first error encounted.
+	return err
 }
